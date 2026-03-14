@@ -1,2 +1,2 @@
-# Z-QryptSOAP
-SOAP API for Z-TAS System
+# Z-QryptGIN
+Go-Lang GIN framework based REST API for Z-TAS System
