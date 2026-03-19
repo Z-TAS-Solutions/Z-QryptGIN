@@ -1,3 +1,4 @@
+// package provides constants for the DB authentication and token max age
 package constants
 
 import "time"

@@ -2,10 +2,10 @@ package configs
 
 import (
 	"fmt"
-	"internal/app/constants"
 	"net/http"
 	"os"
 
+	"github.com/Z-TAS-Solutions/Z-QcryptGIN/internal/app/constants"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
