@@ -1,3 +1,4 @@
+// These are the configs
 package configs
 
 import (
@@ -5,7 +6,7 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/Z-TAS-Solutions/Z-QcryptGIN/internal/app/constants"
+	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/app/constants"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
