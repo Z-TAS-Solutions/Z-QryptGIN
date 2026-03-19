@@ -1,0 +1,13 @@
+#binaries from programs and plugins
+*.exit
+*.exe~
+*.dll
+*.so
+*.dylib
+.idea
+
+# Test binary, build with 'go tes -c'
+*.test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
