@@ -18,6 +18,14 @@ func (p PhoneNumber) IsValid() bool {
 	return phoneRegex.MatchString(string(p))
 }
 
+type IPV4 string
+
+var ipv4Regex = regexp.MustCompile(`^((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\.){3}(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)$`)
+
+func (i IPV4) IsValid() bool {
+	return ipv4Regex.MatchString((string(i)))
+}
+
 type UserStatus string
 
 const (
@@ -82,6 +90,53 @@ const (
 func (alt ActivityLogType) IsValid() bool {
 	switch alt {
 	case ActivityFailedLogin, ActivityLoginSuccess, ActivityLogout, ActivityMFAApproved, ActivityMFADenied, ActivityPassKeyActivated, ActivitySessionRevoked:
+		return true
+	}
+	return false
+}
+
+type MfaStatus string
+
+const (
+	MfaPending  MfaStatus = "Pending"
+	MfaApproved MfaStatus = "Approved"
+	MfaDenied   MfaStatus = "Denied"
+	MfaExpired  MfaStatus = "Expired"
+)
+
+func (ms MfaStatus) IsValid() bool {
+	switch ms {
+	case MfaPending, MfaApproved, MfaDenied, MfaExpired:
+		return true
+	}
+	return false
+}
+
+type MfaDecision string
+
+const (
+	MfaDecApproved MfaDecision = "Approved"
+	MfaDecDenied   MfaDecision = "Denied"
+)
+
+func (md MfaDecision) IsValid() bool {
+	switch md {
+	case MfaDecApproved, MfaDecDenied:
+		return true
+	}
+	return false
+}
+
+type UserRole string
+
+const (
+	RoleAdmin  UserRole = "Admin"
+	RoleClient UserRole = "Client"
+)
+
+func (ur UserRole) IsValid() bool {
+	switch ur {
+	case RoleAdmin, RoleClient:
 		return true
 	}
 	return false
