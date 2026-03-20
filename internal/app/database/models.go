@@ -8,10 +8,10 @@ import {
 type User struct {
 	gorm.Model
 	Name string
-	CustomID  UserCustomID
-	Email Email `gorm:"unique"`
-	PhoneNo PhoneNumber `gorm:"unique"`
-	Nic NIC `gorm:"unique"`
+	CustomID  UserCustomID `gorm:"uniqueIndex;size:10"`
+	Email Email `gorm:"uniqueIndex"`
+	PhoneNo PhoneNumber `gorm:"uniqueIndex"`
+	Nic NIC `gorm:"uniqueIndex"`
 	Role UserRole
 	PasswordHash string
 	Status UserStatus `gorm:"default:Active"`
@@ -28,7 +28,7 @@ type User struct {
 type Notification struct {
 	gorm.Model
 	UserID uint
-	NotID 
+	NotifiID  NotificationID `gorm:"uniqueIndex"`
 	Title string
 	Message string
 	NotifyType NotificationType `gorm:"unique"`
@@ -38,6 +38,7 @@ type Notification struct {
 type MfaChallenge struct {
 	gorm.Model
 	UserID uint
+	MfaID MfaChallengeID `gorm:"uniqueIndex"`
 	DeviceName string
 	Location string
 	IpAddress IPV4
@@ -49,6 +50,7 @@ type MfaChallenge struct {
 type ActivityLog struct {
 	gorm.Model
 	UserID uint
+	ActivityNo ActivityID `gorm:"uniqueIndex"`
 	Title string
 	Device string
 	TimeLabel time.Time
@@ -59,6 +61,7 @@ type ActivityLog struct {
 type Passkey struct {
 	gorm.Model
 	UserID uint
+	PassID PasskeyID `gorm:"uniqueIndex"`
 	Name string
 	PublicKey string
 	BackedUp *string
@@ -68,6 +71,7 @@ type Passkey struct {
 type Session struct {
 	gorm.Model
 	UserID uint
+	SessionNo SessionID `gorm:"uniqueIndex"`
 	DeviceName string
 	Location string
 	IpAddress IPV4
