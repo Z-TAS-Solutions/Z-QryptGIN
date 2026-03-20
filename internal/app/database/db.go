@@ -23,8 +23,6 @@ func NewDatabaseConnection(dsn string) (*gorm.DB, error) {
 	sqlDB.SetMaxOpenConns(100)          // Limit max open connections to prevent DB overload
 	sqlDB.SetConnMaxLifetime(time.Hour) // Recycle connections every hour
 
-	// Auto-migrate your models here (optional but helpful in dev)
-	// db.AutoMigrate(&User{}, &Notification{}, ...)
 
 	return db, nil
 }
