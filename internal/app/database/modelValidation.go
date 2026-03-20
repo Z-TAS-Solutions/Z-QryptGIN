@@ -1,13 +1,9 @@
 package database
 
-import "fmt"
-
 import (
 	"errors"
 	"regexp"
 )
-
-// --- Domain Types ---
 
 type Email string
 
@@ -35,16 +31,24 @@ type IPV4 string
 
 var ipv4Regex = regexp.MustCompile(`^((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\.){3}(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)$`)
 
-func (i IPV4) Validate() error {
-	if !ipv4Regex.MatchString(string(i)) {
-		return errors.New("invalid IPv4 address")
+func (i IPV4) IsValid() bool {
+	return ipv4Regex.MatchString((string(i)))
+}
+
+type UserCustomID string
+
+var userCustomIDRegex = regexp.MustCompile(`^USR-[a-zA-Z0-9]{6}$`)
+
+func (uci UserCustomID) validate() error {
+	if !userCustomIDRegex.MatchString((string(u))) {
+		return errors.New("invalid user ID format")
 	}
 	return nil
 }
 
 type NIC string
 
-var nicRegex = regexp.MustCompile(`^([0-9]{9}[vVxX]|[0-9]{12})$`)
+var nicRegex = regexp.MustCompile((`^([0-9]{9}[vVxX]|[0-9]{12})$`))
 
 func (n NIC) Validate() error {
 	if !nicRegex.MatchString(string(n)) {
@@ -53,42 +57,6 @@ func (n NIC) Validate() error {
 	return nil
 }
 
-// --- ID Types with Specific Error Messages ---
-
-type UserCustomID string
-
-var userCustomIDRegex = regexp.MustCompile(`^USR-[a-zA-Z0-9]{6}$`)
-
-func (id UserCustomID) Validate() error {
-	if !userCustomIDRegex.MatchString(string(id)) {
-		return errors.New("invalid User ID format (expected USR-XXXXXX)")
-	}
-	return nil
-}
-
-type NotificationID string
-
-var notificationIDRegex = regexp.MustCompile(`^NOT-[a-zA-Z0-9]{8}$`)
-
-func (id NotificationID) Validate() error {
-	if !notificationIDRegex.MatchString(string(id)) {
-		return errors.New("invalid Notification ID format")
-	}
-	return nil
-}
-
-type SessionID string
-
-var sessionIDRegex = regexp.MustCompile(`^SESS-[a-zA-Z0-9]{8}$`)
-
-func (id SessionID) Validate() error {
-	if !sessionIDRegex.MatchString(string(id)) {
-		return errors.New("invalid Session ID format")
-	}
-	return nil
-}
-
-// ... Follow this pattern for MfaChallengeID, ActivityID, and PasskeyID ...
 type UserStatus string
 
 const (
