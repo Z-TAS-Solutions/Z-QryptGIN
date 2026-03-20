@@ -77,3 +77,48 @@ type Session struct {
 	IpAddress IPV4
 	LastActive time.Time
 }
+
+
+//-- GORM Hooks to early fail validation logic--
+
+// BeforeSave hooks for automatic validation in GORM
+
+func (u *User) BeforeSave(tx *gorm.DB) error {
+	if err := u.CustomID.Validate(); err != nil { return err }
+	if err := u.Email.Validate(); err != nil { return err }
+	if err := u.PhoneNo.Validate(); err != nil { return err }
+	if err := u.Nic.Validate(); err != nil { return err }
+	if err := u.Role.Validate(); err != nil { return err }
+	if err := u.Status.Validate(); err != nil { return err }
+	if err := u.SecurityLevel.Validate(); err != nil { return err }
+	return nil
+}
+
+func (n *Notification) BeforeSave(tx *gorm.DB) error {
+	if err := n.NotifiID.Validate(); err != nil { return err }
+	if err := n.NotifyType.Validate(); err != nil { return err }
+	return nil
+}
+
+func (m *MfaChallenge) BeforeSave(tx *gorm.DB) error {
+	if err := m.MfaID.Validate(); err != nil { return err }
+	if err := m.IpAddress.Validate(); err != nil { return err }
+	if err := m.Status.Validate(); err != nil { return err }
+	return nil
+}
+
+func (a *ActivityLog) BeforeSave(tx *gorm.DB) error {
+	if err := a.ActivityNo.Validate(); err != nil { return err }
+	if err := a.Type.Validate(); err != nil { return err }
+	return nil
+}
+
+func (p *Passkey) BeforeSave(tx *gorm.DB) error {
+	return p.PassID.Validate()
+}
+
+func (s *Session) BeforeSave(tx *gorm.DB) error {
+	if err := s.SessionNo.Validate(); err != nil { return err }
+	if err := s.IpAddress.Validate(); err != nil { return err }
+	return nil
+}
