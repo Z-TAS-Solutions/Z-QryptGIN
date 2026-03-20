@@ -8,22 +8,26 @@ import {
 type User struct {
 	gorm.Model
 	Name string
+	CustomID  UserCustomID
 	Email Email `gorm:"unique"`
 	PhoneNo PhoneNumber `gorm:"unique"`
+	Nic NIC `gorm:"unique"`
 	Role UserRole
 	PasswordHash string
 	Status UserStatus `gorm:"default:Active"`
 	SecurityLevel UserSecurityLevel `gorm:"default:Low"`
 	PasskeyStatus bool
-}
-
-type Passkey struct {
-	gorm.Model
-
+	//Relationships
+	Passkeys []Passkey `gorm:"foreignKey:UserID"`
+	Notifications []Notification `gorm:"foreignKey:UserID"`
+    MfaChallenges []MfaChallenge `gorm:"foreignKey:UserID"`
+    ActivityLogs  []ActivityLog  `gorm:"foreignKey:UserID"`
+    Sessions      []Session      `gorm:"foreignKey:UserID"`
 }
 
 type Notification struct {
 	gorm.Model
+	UserID uint
 	NotID 
 	Title string
 	Message string
@@ -31,8 +35,9 @@ type Notification struct {
 	IsRead bool
 }
 
-type MfaChallenges struct {
+type MfaChallenge struct {
 	gorm.Model
+	UserID uint
 	DeviceName string
 	Location string
 	IpAddress IPV4
@@ -43,6 +48,7 @@ type MfaChallenges struct {
 
 type ActivityLog struct {
 	gorm.Model
+	UserID uint
 	Title string
 	Device string
 	TimeLabel time.Time
@@ -52,6 +58,7 @@ type ActivityLog struct {
 
 type Passkey struct {
 	gorm.Model
+	UserID uint
 	Name string
 	PublicKey string
 	BackedUp *string
@@ -60,6 +67,7 @@ type Passkey struct {
 
 type Session struct {
 	gorm.Model
+	UserID uint
 	DeviceName string
 	Location string
 	IpAddress IPV4

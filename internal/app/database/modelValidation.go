@@ -1,6 +1,9 @@
 package database
 
-import "regexp"
+import (
+	"errors"
+	"regexp"
+)
 
 type Email string
 
@@ -24,6 +27,28 @@ var ipv4Regex = regexp.MustCompile(`^((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\.){3}(25
 
 func (i IPV4) IsValid() bool {
 	return ipv4Regex.MatchString((string(i)))
+}
+
+type UserCustomID string
+
+var userCustomIDRegex = regexp.MustCompile(`^USR-[a-zA-Z0-9]{6}$`)
+
+func (uci UserCustomID) validate() error {
+	if !userCustomIDRegex.MatchString((string(u))) {
+		return errors.New("invalid user ID format")
+	}
+	return nil
+}
+
+type NIC string
+
+var nicRegex = regexp.MustCompile((`^([0-9]{9}[vVxX]|[0-9]{12})$`))
+
+func (n NIC) Validate() error {
+	if !nicRegex.MatchString(string(n)) {
+		return errors.New("invalid NIC format")
+	}
+	return nil
 }
 
 type UserStatus string
