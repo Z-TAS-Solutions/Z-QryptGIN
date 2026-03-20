@@ -13,25 +13,25 @@ import (
 )
 
 func main() {
-	// 1. Load Config
+	// Load Config
 	cfg := configs.NewConfig()
 
-	// 2. Connect to DB
+	// Connect to DB
 	db, err := database.NewDatabaseConnection(cfg.Database.DatabaseSource)
 	if err != nil {
 		log.Fatal().Err(err).Msg("Could not connect to database")
 	}
 
-	// 3. Initialize Repositories
+	// Initialize Repositories
 	userRepo := repository.NewUserRepository(db)
 
-	// 4. Initialize Services
+	// Initialize Services
 	userSvc := service.NewUserService(userRepo)
 
-	// 5. Initialize Handlers
+	// Initialize Handlers
 	userHandler := handlers.NewUserHandler(userSvc)
 
-	// 6. Setup Gin Router
+	// Setup Gin Router
 	router := gin.Default()
 	router.Use(cfg.CorsNew())
 	
@@ -41,7 +41,7 @@ func main() {
 		v1.POST("/users", userHandler.Register)
 	}
 
-	// 7. Start Server using your existing Server struct
+	// Start Server using your existing Server struct
 	srv := server.NewServer(log.Logger, router, cfg)
 	srv.Serve()
 }
