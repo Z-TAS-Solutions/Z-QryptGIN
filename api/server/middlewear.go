@@ -3,7 +3,8 @@ package server
 import (
 	"errors"
 	"net/http"
-	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/app/database" // Update with your actual module name
+
+	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/app/database"
 	"github.com/gin-gonic/gin"
 )
 

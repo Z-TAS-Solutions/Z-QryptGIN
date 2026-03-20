@@ -3,7 +3,7 @@ package database
 import (
 	"time"
 
-	"gorm.io/driver/postgres" // Or mysql/sqlite depending on your driver
+	"gorm.io/driver/postgres" 
 	"gorm.io/gorm"
 )
 
