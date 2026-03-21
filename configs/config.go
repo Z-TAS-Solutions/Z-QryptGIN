@@ -15,6 +15,7 @@ import (
 type Config struct {
 	Server   serverConfig
 	Database databaseConfig
+	Redis	redisConfig
 }
 
 type serverConfig struct {
@@ -24,6 +25,11 @@ type serverConfig struct {
 type databaseConfig struct {
 	DatabaseDriver string
 	DatabaseSource string
+}
+
+type redisConfig struct {
+	Address string
+	Password string
 }
 
 func NewConfig() *Config {
@@ -40,6 +46,10 @@ func NewConfig() *Config {
 			DatabaseDriver: GetEnvOrPanic(constants.EnvKeys.DBDriver),
 			DatabaseSource: GetEnvOrPanic(constants.EnvKeys.DBSource),
 		},
+		Redis: redisConfig{
+			Address: GetEnvOrPanic(constants.EnvKeys.RedisAddress),
+			Password: os.Getenv(constants.EnvKeys.RedisPassword)
+		}
 	}
 
 	return c

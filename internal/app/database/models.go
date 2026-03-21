@@ -16,7 +16,7 @@ type User struct {
 	PasswordHash string
 	Status UserStatus `gorm:"default:Active"`
 	SecurityLevel UserSecurityLevel `gorm:"default:Low"`
-	PasskeyStatus bool
+	MFAStatus bool
 	//Relationships
 	Passkeys []Passkey `gorm:"foreignKey:UserID"`
 	Notifications []Notification `gorm:"foreignKey:UserID"`
