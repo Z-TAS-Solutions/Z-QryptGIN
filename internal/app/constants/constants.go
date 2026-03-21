@@ -9,6 +9,8 @@ var EnvKeys = envKeys{
 	CorsAllowedOrigin: "CORS_ALLOWED_ORIGIN",
 	DBDriver:          "DB_DRIVER",
 	DBSource:          "DB_SOURCE",
+	RedisAddress: "REDIS_ADDRESS"
+	RedisPassword: "REDIS_PASSWORD"
 }
 
 var Headers = headers{
@@ -24,6 +26,8 @@ type envKeys struct {
 	CorsAllowedOrigin string
 	DBDriver          string
 	DBSource          string
+	RedisAddress string
+	RedisPassword string
 }
 
 type headers struct {
