@@ -19,139 +19,101 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	TestService_Ping_FullMethodName     = "/zproto.TestService/Ping"
-	TestService_SendData_FullMethodName = "/zproto.TestService/SendData"
+	PingService_Ping_FullMethodName = "/zproto.PingService/Ping"
 )
 
-// TestServiceClient is the client API for TestService service.
+// PingServiceClient is the client API for PingService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-type TestServiceClient interface {
+type PingServiceClient interface {
 	Ping(ctx context.Context, in *PingRequest, opts ...grpc.CallOption) (*PingResponse, error)
-	SendData(ctx context.Context, in *TestPacket, opts ...grpc.CallOption) (*PingResponse, error)
 }
 
-type testServiceClient struct {
+type pingServiceClient struct {
 	cc grpc.ClientConnInterface
 }
 
-func NewTestServiceClient(cc grpc.ClientConnInterface) TestServiceClient {
-	return &testServiceClient{cc}
+func NewPingServiceClient(cc grpc.ClientConnInterface) PingServiceClient {
+	return &pingServiceClient{cc}
 }
 
-func (c *testServiceClient) Ping(ctx context.Context, in *PingRequest, opts ...grpc.CallOption) (*PingResponse, error) {
+func (c *pingServiceClient) Ping(ctx context.Context, in *PingRequest, opts ...grpc.CallOption) (*PingResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(PingResponse)
-	err := c.cc.Invoke(ctx, TestService_Ping_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, PingService_Ping_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *testServiceClient) SendData(ctx context.Context, in *TestPacket, opts ...grpc.CallOption) (*PingResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(PingResponse)
-	err := c.cc.Invoke(ctx, TestService_SendData_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-// TestServiceServer is the server API for TestService service.
-// All implementations must embed UnimplementedTestServiceServer
+// PingServiceServer is the server API for PingService service.
+// All implementations must embed UnimplementedPingServiceServer
 // for forward compatibility.
-type TestServiceServer interface {
+type PingServiceServer interface {
 	Ping(context.Context, *PingRequest) (*PingResponse, error)
-	SendData(context.Context, *TestPacket) (*PingResponse, error)
-	mustEmbedUnimplementedTestServiceServer()
+	mustEmbedUnimplementedPingServiceServer()
 }
 
-// UnimplementedTestServiceServer must be embedded to have
+// UnimplementedPingServiceServer must be embedded to have
 // forward compatible implementations.
 //
 // NOTE: this should be embedded by value instead of pointer to avoid a nil
 // pointer dereference when methods are called.
-type UnimplementedTestServiceServer struct{}
+type UnimplementedPingServiceServer struct{}
 
-func (UnimplementedTestServiceServer) Ping(context.Context, *PingRequest) (*PingResponse, error) {
+func (UnimplementedPingServiceServer) Ping(context.Context, *PingRequest) (*PingResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method Ping not implemented")
 }
-func (UnimplementedTestServiceServer) SendData(context.Context, *TestPacket) (*PingResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method SendData not implemented")
-}
-func (UnimplementedTestServiceServer) mustEmbedUnimplementedTestServiceServer() {}
-func (UnimplementedTestServiceServer) testEmbeddedByValue()                     {}
+func (UnimplementedPingServiceServer) mustEmbedUnimplementedPingServiceServer() {}
+func (UnimplementedPingServiceServer) testEmbeddedByValue()                     {}
 
-// UnsafeTestServiceServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to TestServiceServer will
+// UnsafePingServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to PingServiceServer will
 // result in compilation errors.
-type UnsafeTestServiceServer interface {
-	mustEmbedUnimplementedTestServiceServer()
+type UnsafePingServiceServer interface {
+	mustEmbedUnimplementedPingServiceServer()
 }
 
-func RegisterTestServiceServer(s grpc.ServiceRegistrar, srv TestServiceServer) {
-	// If the following call panics, it indicates UnimplementedTestServiceServer was
+func RegisterPingServiceServer(s grpc.ServiceRegistrar, srv PingServiceServer) {
+	// If the following call panics, it indicates UnimplementedPingServiceServer was
 	// embedded by pointer and is nil.  This will cause panics if an
 	// unimplemented method is ever invoked, so we test this at initialization
 	// time to prevent it from happening at runtime later due to I/O.
 	if t, ok := srv.(interface{ testEmbeddedByValue() }); ok {
 		t.testEmbeddedByValue()
 	}
-	s.RegisterService(&TestService_ServiceDesc, srv)
+	s.RegisterService(&PingService_ServiceDesc, srv)
 }
 
-func _TestService_Ping_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _PingService_Ping_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(PingRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(TestServiceServer).Ping(ctx, in)
+		return srv.(PingServiceServer).Ping(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: TestService_Ping_FullMethodName,
+		FullMethod: PingService_Ping_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(TestServiceServer).Ping(ctx, req.(*PingRequest))
+		return srv.(PingServiceServer).Ping(ctx, req.(*PingRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _TestService_SendData_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(TestPacket)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(TestServiceServer).SendData(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: TestService_SendData_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(TestServiceServer).SendData(ctx, req.(*TestPacket))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-// TestService_ServiceDesc is the grpc.ServiceDesc for TestService service.
+// PingService_ServiceDesc is the grpc.ServiceDesc for PingService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
-var TestService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "zproto.TestService",
-	HandlerType: (*TestServiceServer)(nil),
+var PingService_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "zproto.PingService",
+	HandlerType: (*PingServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
 			MethodName: "Ping",
-			Handler:    _TestService_Ping_Handler,
-		},
-		{
-			MethodName: "SendData",
-			Handler:    _TestService_SendData_Handler,
+			Handler:    _PingService_Ping_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

@@ -1,57 +1,49 @@
 package ipc
 
 import (
-	"encoding/binary"
-	"io"
+	"context"
 	"log"
+	"net"
+	"os"
+	"runtime"
 
+	"github.com/Microsoft/go-winio"
 	"github.com/Z-TAS-Solutions/Z-QryptGIN/api/grpc/zproto"
-	"github.com/natefinch/npipe"
-	"google.golang.org/protobuf/proto"
+	"google.golang.org/grpc"
 )
 
-func StartServer(pipeName string, handle func(conn io.ReadWriteCloser)) {
-	listener, err := npipe.Listen(pipeName)
-	if err != nil {
-		log.Fatal(err)
-	}
-	log.Println("Go ZIPC server running on ....", pipeName)
-
-	for {
-		conn, err := listener.Accept()
-		if err != nil {
-			log.Println("Failed to Connect : ", err)
-			continue
-		}
-		go handle(conn)
-	}
+type PingServer struct {
+	zproto.UnimplementedPingServiceServer
 }
 
-func HandleConnection(conn io.ReadWriteCloser) {
-	defer conn.Close()
+func (s *PingServer) Ping(ctx context.Context, in *zproto.PingRequest) (*zproto.PingResponse, error) {
+	log.Printf("Received via gRPC-IPC: %s", in.GetMessage())
+	return &zproto.PingResponse{Reply: "Z-Qrypt Hub Active"}, nil
+}
 
-	lengthBuffer := make([]byte, 4)
-	_, err := io.ReadFull(conn, lengthBuffer)
-	if err != nil {
-		log.Println("Failed To Read Msg Length : ", err)
-		return
-	}
-	length := int(binary.LittleEndian.Uint32(lengthBuffer))
-
-	payload := make([]byte, length)
-	_, err = io.ReadFull(conn, payload)
-	if err != nil {
-		log.Println("Failed To Read Msg : ", err)
-		return
+func GetIPCListener() (net.Listener, error) {
+	if runtime.GOOS == "windows" {
+		return winio.ListenPipe(`\\.\pipe\zproto`, nil)
 	}
 
-	zpacket := &zproto.ZIPCPacket{}
-	err = proto.Unmarshal(payload, zpacket)
-	if err != nil {
-		log.Println("Failed To Decode Payload : ", err)
-		return
+	socketPath := "/tmp/zproto.sock"
+	os.Remove(socketPath)
+	return net.Listen("unix", socketPath)
+}
+
+func RunZIPCHub(grpcServer *grpc.Server) {
+
+	zproto.RegisterPingServiceServer(grpcServer, &PingServer{})
+
+	socketPath, error := GetIPCListener()
+	if error != nil {
+		log.Fatalf("Failed to start IPC: %v", error)
 	}
 
-	log.Println("Received ZIPCPacket:", zpacket)
+	log.Println("Z-Hub is running on local IPC...")
+
+	if error := grpcServer.Serve(socketPath); error != nil {
+		log.Fatalf("gRPC server failed: %v", error)
+	}
 
 }

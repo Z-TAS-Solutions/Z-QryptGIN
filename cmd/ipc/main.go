@@ -1,7 +1,13 @@
 package main
 
-import "github.com/Z-TAS-Solutions/Z-QryptGIN/internal/pkg/ipc"
+import (
+	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/pkg/ipc"
+	"google.golang.org/grpc"
+)
 
 func main() {
-	ipc.StartServer(`\\.\pipe\Z-IPC`, ipc.HandleConnection)
+	grpcServer := grpc.NewServer()
+
+	go ipc.RunZIPCHub(grpcServer)
+
 }

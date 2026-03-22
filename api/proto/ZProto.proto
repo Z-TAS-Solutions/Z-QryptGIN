@@ -1,16 +1,9 @@
 syntax = "proto3";
-
 package zproto;
+option go_package = "./api/grpc/zproto/";
 
-option go_package = "api/grpc/zproto/";
-
-message ZIPCPacket {
-    uint64 request_id = 1;
-    oneof message {
-      PingRequest ping_request = 2;
-      PingResponse ping_response = 3;
-      TestPacket test_packet = 4;
-    }
+service PingService {
+  rpc Ping(PingRequest) returns (PingResponse);
 }
 
 message PingRequest {
@@ -19,15 +12,4 @@ message PingRequest {
 
 message PingResponse {
   string reply = 1;
-}
-
-message TestPacket {
-  uint32 id = 1;
-  bytes payload = 2;
-  uint64 timestamp = 3;
-}
-
-service TestService {
-  rpc Ping(PingRequest) returns (PingResponse);
-  rpc SendData(TestPacket) returns (PingResponse);
 }
