@@ -34,14 +34,11 @@ func RequireAuth(jwtSvc service.JWTService, sessionRepo repository.SessionReposi
 
 		// 3. Stateful Redis Check (I/O bound, but very fast)
 		session, err := sessionRepo.GetSessionByJTI(c.Request.Context(), jti)
-		if err != nil || session == nil || !session.IsActive {
+		if err != nil || session == nil || !session.IsActive || session.MfaStatus != dto.MfaStatusVerified {
 			// Token is cryptographically valid, but session was revoked/deleted in Redis
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "session expired or revoked"})
 			return
 		}
-
-		// Optional: Check MFA Status here if certain routes require it
-		// if session.MfaStatus == dto.MfaStatusRequired { ... }
 
 		// 4. Set Context Variables for downstream handlers
 		c.Set("user_id", userID)
