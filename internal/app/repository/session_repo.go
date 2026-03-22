@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"time"
+	"encoding/json"
 
 	"github.com/redis/go-redis/v9"
 )
@@ -42,4 +43,27 @@ func (r *sessionRepository) GetUserIDBySession(ctx context.Context, sessionID st
 func (r *sessionRepository) IncrementAnalytics(ctx context.Context, metricKey string) error {
 	// e.g., INCR api:logins:today
 	return r.redis.Incr(ctx, "analytics:"+metricKey).Err()
+}
+
+func (r *sessionRepository) CreateSession(ctx context.Context, session *dto.Session) error {
+	data, err := json.Marshal(session)
+	if err != nil {
+		return err
+	}
+	
+	ttl := time.Until(session.ExpiresAt)
+	return r.redis.Set(ctx, "session:"+session.JTI, data, ttl).Err()
+}
+
+func (r *sessionRepository) GetSessionByJTI(ctx context.Context, jti string) (*dto.Session, error) {
+	data, err := r.redis.Get(ctx, "session:"+jti).Bytes()
+	if err != nil {
+		return nil, err // Returns redis.Nil if not found (logged out / revoked)
+	}
+
+	var session dto.Session
+	if err := json.Unmarshal(data, &session); err != nil {
+		return nil, err
+	}
+	return &session, nil
 }
