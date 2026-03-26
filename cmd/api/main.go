@@ -14,15 +14,19 @@ import (
 )
 
 func main() {
-	// Load Config
+	// 1. Load the damn Logger
+	logger := zerolog.New(os.Stdout).With().Timestamp().Logger()
+	ctx := context.Background()
+	// 2. Loading the Config
 	cfg := configs.NewConfig()
 
-	// Connect to PostgreSQL
+	// 3. Connect to PostgreSQL database
 	db, err := database.NewDatabaseConnection(cfg.Database.DatabaseSource)
 	if err != nil {
 		log.Fatal().Err(err).Msg("Could not connect to database")
 	}
 
+	// 4. Connect to Redis Chache 
 	redisClient, err := cache.NewRedisClient(cfg.Redis.Address, cfg.Redis.Password)
 	if err != nil {
 		log.Fatal().Err(err).Msg("Could not connect to Redis")
@@ -30,17 +34,29 @@ func main() {
 
 	defer redisClient.Close()
 
-	// Initialize Repositories
+	// 5. Start the Email Service
+	logger.Info().Msg("Initializing Email Service...")
+	emailSvc, err := service.NewEmailService(
+		cts,
+		cfg.Gmail.ClientID,
+		cfg.Gmail.ClientSecret,
+		cfg.Gmail.TokenPath,
+	)
+	if err != nil {
+		logger.Fatal().Err(err).Msg("Failed to initialize Email Service")
+	}
+
+	// 6. Initialize Repositories
 	userRepo := repository.NewUserRepository(db)
 	sessionRepo := repository.NewSessionRepository(redisClient)
 
-	// Initialize Services
+	// 7. Initialize Services
 	userSvc := service.NewUserService(userRepo, sessionRepo)
 
-	// Initialize Handlers
+	// 8. Initialize Handlers
 	userHandler := handlers.NewUserHandler(userSvc)
 
-	// Setup Gin Router
+	// 9. Setup Gin Router
 	router := gin.Default()
 	router.Use(cfg.CorsNew())
 
@@ -50,7 +66,7 @@ func main() {
 		v1.POST("/users", userHandler.Register)
 	}
 
-	// Start Server using your existing Server struct
+	// 10. Finally Starting the damn server 🥲
 	srv := server.NewServer(log.Logger, router, cfg)
 	srv.Serve()
 }

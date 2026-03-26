@@ -11,6 +11,9 @@ var EnvKeys = envKeys{
 	DBSource:          "DB_SOURCE",
 	RedisAddress: "REDIS_ADDRESS"
 	RedisPassword: "REDIS_PASSWORD"
+	GmailClientID: "GMAIL_CLIENT_ID"
+	GmailClientSecret: "GMAIL_CLIENT_SECRET"
+	GmailTokenPath: "GMAIL_TOKEN_PATH"
 }
 
 var Headers = headers{
@@ -28,6 +31,9 @@ type envKeys struct {
 	DBSource          string
 	RedisAddress string
 	RedisPassword string
+	GmailClientID string
+	GmailClientSecret string
+	GmailTokenPath string
 }
 
 type headers struct {
