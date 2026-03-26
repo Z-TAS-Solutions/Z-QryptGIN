@@ -8,7 +8,7 @@ import (
 	"runtime"
 
 	"github.com/Microsoft/go-winio"
-	"github.com/Z-TAS-Solutions/Z-QryptGIN/api/grpc/zproto"
+	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/pkg/zproto"
 	"google.golang.org/grpc"
 )
 

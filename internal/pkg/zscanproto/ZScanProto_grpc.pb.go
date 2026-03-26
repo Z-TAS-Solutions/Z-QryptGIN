@@ -19,13 +19,17 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	ZPiController_SetLEDStatus_FullMethodName  = "/zscanproto.ZPiController/SetLEDStatus"
-	ZPiController_GetLED_FullMethodName        = "/zscanproto.ZPiController/GetLED"
-	ZPiController_ConfigureToF_FullMethodName  = "/zscanproto.ZPiController/ConfigureToF"
-	ZPiController_EnableToF_FullMethodName     = "/zscanproto.ZPiController/EnableToF"
-	ZPiController_DisableToF_FullMethodName    = "/zscanproto.ZPiController/DisableToF"
-	ZPiController_ActivateToF_FullMethodName   = "/zscanproto.ZPiController/ActivateToF"
-	ZPiController_DeactivateToF_FullMethodName = "/zscanproto.ZPiController/DeactivateToF"
+	ZPiController_SetLEDStatus_FullMethodName     = "/zscanproto.ZPiController/SetLEDStatus"
+	ZPiController_GetLED_FullMethodName           = "/zscanproto.ZPiController/GetLED"
+	ZPiController_ConfigureToF_FullMethodName     = "/zscanproto.ZPiController/ConfigureToF"
+	ZPiController_EnableToF_FullMethodName        = "/zscanproto.ZPiController/EnableToF"
+	ZPiController_DisableToF_FullMethodName       = "/zscanproto.ZPiController/DisableToF"
+	ZPiController_ActivateToF_FullMethodName      = "/zscanproto.ZPiController/ActivateToF"
+	ZPiController_DeactivateToF_FullMethodName    = "/zscanproto.ZPiController/DeactivateToF"
+	ZPiController_ActivateCamera_FullMethodName   = "/zscanproto.ZPiController/ActivateCamera"
+	ZPiController_DeactivateCamera_FullMethodName = "/zscanproto.ZPiController/DeactivateCamera"
+	ZPiController_ConfigureCamera_FullMethodName  = "/zscanproto.ZPiController/ConfigureCamera"
+	ZPiController_ToFEventStream_FullMethodName   = "/zscanproto.ZPiController/ToFEventStream"
 )
 
 // ZPiControllerClient is the client API for ZPiController service.
@@ -39,6 +43,10 @@ type ZPiControllerClient interface {
 	DisableToF(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Status, error)
 	ActivateToF(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Status, error)
 	DeactivateToF(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Status, error)
+	ActivateCamera(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Status, error)
+	DeactivateCamera(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Status, error)
+	ConfigureCamera(ctx context.Context, in *CameraConfig, opts ...grpc.CallOption) (*Status, error)
+	ToFEventStream(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[ToFEvent, ToFEvent], error)
 }
 
 type zPiControllerClient struct {
@@ -119,6 +127,49 @@ func (c *zPiControllerClient) DeactivateToF(ctx context.Context, in *Empty, opts
 	return out, nil
 }
 
+func (c *zPiControllerClient) ActivateCamera(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Status, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Status)
+	err := c.cc.Invoke(ctx, ZPiController_ActivateCamera_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *zPiControllerClient) DeactivateCamera(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Status, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Status)
+	err := c.cc.Invoke(ctx, ZPiController_DeactivateCamera_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *zPiControllerClient) ConfigureCamera(ctx context.Context, in *CameraConfig, opts ...grpc.CallOption) (*Status, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Status)
+	err := c.cc.Invoke(ctx, ZPiController_ConfigureCamera_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *zPiControllerClient) ToFEventStream(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[ToFEvent, ToFEvent], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &ZPiController_ServiceDesc.Streams[0], ZPiController_ToFEventStream_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[ToFEvent, ToFEvent]{ClientStream: stream}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type ZPiController_ToFEventStreamClient = grpc.BidiStreamingClient[ToFEvent, ToFEvent]
+
 // ZPiControllerServer is the server API for ZPiController service.
 // All implementations must embed UnimplementedZPiControllerServer
 // for forward compatibility.
@@ -130,6 +181,10 @@ type ZPiControllerServer interface {
 	DisableToF(context.Context, *Empty) (*Status, error)
 	ActivateToF(context.Context, *Empty) (*Status, error)
 	DeactivateToF(context.Context, *Empty) (*Status, error)
+	ActivateCamera(context.Context, *Empty) (*Status, error)
+	DeactivateCamera(context.Context, *Empty) (*Status, error)
+	ConfigureCamera(context.Context, *CameraConfig) (*Status, error)
+	ToFEventStream(grpc.BidiStreamingServer[ToFEvent, ToFEvent]) error
 	mustEmbedUnimplementedZPiControllerServer()
 }
 
@@ -160,6 +215,18 @@ func (UnimplementedZPiControllerServer) ActivateToF(context.Context, *Empty) (*S
 }
 func (UnimplementedZPiControllerServer) DeactivateToF(context.Context, *Empty) (*Status, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeactivateToF not implemented")
+}
+func (UnimplementedZPiControllerServer) ActivateCamera(context.Context, *Empty) (*Status, error) {
+	return nil, status.Error(codes.Unimplemented, "method ActivateCamera not implemented")
+}
+func (UnimplementedZPiControllerServer) DeactivateCamera(context.Context, *Empty) (*Status, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeactivateCamera not implemented")
+}
+func (UnimplementedZPiControllerServer) ConfigureCamera(context.Context, *CameraConfig) (*Status, error) {
+	return nil, status.Error(codes.Unimplemented, "method ConfigureCamera not implemented")
+}
+func (UnimplementedZPiControllerServer) ToFEventStream(grpc.BidiStreamingServer[ToFEvent, ToFEvent]) error {
+	return status.Error(codes.Unimplemented, "method ToFEventStream not implemented")
 }
 func (UnimplementedZPiControllerServer) mustEmbedUnimplementedZPiControllerServer() {}
 func (UnimplementedZPiControllerServer) testEmbeddedByValue()                       {}
@@ -308,6 +375,67 @@ func _ZPiController_DeactivateToF_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ZPiController_ActivateCamera_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ZPiControllerServer).ActivateCamera(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ZPiController_ActivateCamera_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ZPiControllerServer).ActivateCamera(ctx, req.(*Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ZPiController_DeactivateCamera_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ZPiControllerServer).DeactivateCamera(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ZPiController_DeactivateCamera_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ZPiControllerServer).DeactivateCamera(ctx, req.(*Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ZPiController_ConfigureCamera_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CameraConfig)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ZPiControllerServer).ConfigureCamera(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ZPiController_ConfigureCamera_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ZPiControllerServer).ConfigureCamera(ctx, req.(*CameraConfig))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ZPiController_ToFEventStream_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(ZPiControllerServer).ToFEventStream(&grpc.GenericServerStream[ToFEvent, ToFEvent]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type ZPiController_ToFEventStreamServer = grpc.BidiStreamingServer[ToFEvent, ToFEvent]
+
 // ZPiController_ServiceDesc is the grpc.ServiceDesc for ZPiController service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -343,7 +471,26 @@ var ZPiController_ServiceDesc = grpc.ServiceDesc{
 			MethodName: "DeactivateToF",
 			Handler:    _ZPiController_DeactivateToF_Handler,
 		},
+		{
+			MethodName: "ActivateCamera",
+			Handler:    _ZPiController_ActivateCamera_Handler,
+		},
+		{
+			MethodName: "DeactivateCamera",
+			Handler:    _ZPiController_DeactivateCamera_Handler,
+		},
+		{
+			MethodName: "ConfigureCamera",
+			Handler:    _ZPiController_ConfigureCamera_Handler,
+		},
 	},
-	Streams:  []grpc.StreamDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "ToFEventStream",
+			Handler:       _ZPiController_ToFEventStream_Handler,
+			ServerStreams: true,
+			ClientStreams: true,
+		},
+	},
 	Metadata: "ZScanProto.proto",
 }

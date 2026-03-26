@@ -46,6 +46,6 @@ func RunRemoteGRPC(compute bool, remoteAddr string) {
 
 func main() {
 	//RunLocalGRPC(true)
-	zpi_client.RunZPiClientTest("192.168.1.229:50051")
+	zpi_client.RunZPiClient("192.168.1.229:50051")
 
 }
