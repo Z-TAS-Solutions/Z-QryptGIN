@@ -7,6 +7,7 @@ import (
 
 // --- Custom Error Definitions ---
 var (
+	ErrInvalidName           = errors.New("name cannot be empty or have special characters")
 	ErrInvalidEmail          = errors.New("invalid email format")
 	ErrInvalidPhone          = errors.New("invalid phone number format (use +94 or 07...)")
 	ErrInvalidIPv4           = errors.New("invalid IPv4 address format")
@@ -28,6 +29,7 @@ var (
 
 // --- Regex Pre-compilation ---
 var (
+	nameRegex           = regexp.MustCompile(`^[a-zA-Z\s]+$`)
 	emailRegex          = regexp.MustCompile(`^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$`)
 	phoneRegex          = regexp.MustCompile(`^(\+94|0)?7\d{8}$`)
 	ipv4Regex           = regexp.MustCompile(`^((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\.){3}(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)$`)
@@ -41,6 +43,15 @@ var (
 )
 
 // --- String-Based Custom Types ---
+
+type Name string
+
+func (n Name) Validate() error {
+	if !nameRegex.MatchString(string(n)) {
+		return ErrInvalidName
+	}
+	return nil
+}
 
 type Email string
 

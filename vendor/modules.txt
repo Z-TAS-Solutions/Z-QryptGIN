@@ -98,6 +98,9 @@ github.com/dgryski/go-rendezvous
 # github.com/felixge/httpsnoop v1.0.4
 ## explicit; go 1.13
 github.com/felixge/httpsnoop
+# github.com/fxamacker/cbor/v2 v2.9.0
+## explicit; go 1.20
+github.com/fxamacker/cbor/v2
 # github.com/gabriel-vasile/mimetype v1.4.13
 ## explicit; go 1.21
 github.com/gabriel-vasile/mimetype
@@ -138,6 +141,21 @@ github.com/go-playground/universal-translator
 # github.com/go-playground/validator/v10 v10.30.1
 ## explicit; go 1.24.0
 github.com/go-playground/validator/v10
+# github.com/go-viper/mapstructure/v2 v2.5.0
+## explicit; go 1.18
+github.com/go-viper/mapstructure/v2
+github.com/go-viper/mapstructure/v2/internal/errors
+# github.com/go-webauthn/webauthn v0.16.1
+## explicit; go 1.25.0
+github.com/go-webauthn/webauthn/metadata
+github.com/go-webauthn/webauthn/protocol
+github.com/go-webauthn/webauthn/protocol/webauthncbor
+github.com/go-webauthn/webauthn/protocol/webauthncose
+github.com/go-webauthn/webauthn/webauthn
+# github.com/go-webauthn/x v0.2.2
+## explicit; go 1.25.0
+github.com/go-webauthn/x/encoding/asn1
+github.com/go-webauthn/x/revoke
 # github.com/goccy/go-json v0.10.6
 ## explicit; go 1.19
 github.com/goccy/go-json
@@ -163,6 +181,13 @@ github.com/goccy/go-yaml/token
 # github.com/golang-jwt/jwt/v5 v5.3.1
 ## explicit; go 1.21
 github.com/golang-jwt/jwt/v5
+# github.com/google/go-tpm v0.9.8
+## explicit; go 1.22
+github.com/google/go-tpm/legacy/tpm2
+github.com/google/go-tpm/tpm2
+github.com/google/go-tpm/tpm2/transport
+github.com/google/go-tpm/tpmutil
+github.com/google/go-tpm/tpmutil/tbs
 # github.com/google/s2a-go v0.1.9
 ## explicit; go 1.20
 github.com/google/s2a-go
@@ -369,6 +394,9 @@ github.com/vanng822/css
 # github.com/vanng822/go-premailer v0.0.0-20191214114701-be27abe028fe
 ## explicit
 github.com/vanng822/go-premailer/premailer
+# github.com/x448/float16 v0.8.4
+## explicit; go 1.11
+github.com/x448/float16
 # go.mongodb.org/mongo-driver/v2 v2.5.0
 ## explicit; go 1.19
 go.mongodb.org/mongo-driver/v2/bson
@@ -428,6 +456,7 @@ golang.org/x/crypto/cryptobyte/asn1
 golang.org/x/crypto/hkdf
 golang.org/x/crypto/internal/alias
 golang.org/x/crypto/internal/poly1305
+golang.org/x/crypto/ocsp
 golang.org/x/crypto/pbkdf2
 golang.org/x/crypto/scrypt
 golang.org/x/crypto/sha3
