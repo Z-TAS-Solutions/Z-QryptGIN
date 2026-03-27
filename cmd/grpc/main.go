@@ -54,5 +54,5 @@ func main() {
 	}
 	defer zpipcClient.Close()
 
-	zpi_client.RunZPiClient("192.168.1.229:50051")
+	zpi_client.RunZPiClient("192.168.1.229:50051", zpipcClient)
 }
