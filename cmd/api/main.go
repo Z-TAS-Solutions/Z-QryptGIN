@@ -2,8 +2,8 @@ package main
 
 import (
 	"context"
-	"os"
 	"fmt"
+	"os"
 
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog"
