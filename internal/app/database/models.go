@@ -93,13 +93,13 @@ type WebAuthnCredential struct {
 	UserID uint `gorm:"index;not null"`
 
 	// FIDO2 / WebAuthn Core Data
-	CredentialID    []byte `gorm:"type:bytea;uniqueIndex;not null"` // The 'kid'
-	PublicKey       []byte `gorm:"type:bytea;not null"`
-	AttestationType string `gorm:"size:64"`
+	CredentialID    CredentialID      `gorm:"type:bytea;uniqueIndex;not null"` // The 'kid'
+	PublicKey       WebAuthnPublicKey `gorm:"type:bytea;not null"`
+	AttestationType AttestationType   `gorm:"size:64"`
 
 	// Transport is stored as JSON (e.g., ["usb", "ble", "nfc", "internal"])
 	// This matches your preference for "Security-key" vs "client-device"
-	Transport []byte `gorm:"type:jsonb"`
+	Transport WebAuthnTransport `gorm:"type:jsonb"`
 
 	// FIDO2 Flags & Backup Status
 	UserPresent    bool
@@ -108,12 +108,12 @@ type WebAuthnCredential struct {
 	BackupState    bool // Is it currently synced/backed up?
 
 	// Authenticator Metadata
-	AAGUID       []byte `gorm:"type:bytea"` // Identifies the device model
+	AAGUID       AAGUID `gorm:"type:bytea"` // Identifies the device model
 	SignCount    uint32 `gorm:"not null;default:0"`
 	CloneWarning bool   `gorm:"default:false"`
 
 	// Friendly Name (consistent with your Passkey struct)
-	AuthenticatorName string `gorm:"size:100"`
+	AuthenticatorName AuthenticatorName `gorm:"size:100"`
 }
 
 //-- GORM Hooks to early fail validation logic--
@@ -181,10 +181,6 @@ func (a *ActivityLog) BeforeSave(tx *gorm.DB) error {
 	return nil
 }
 
-func (p *Passkey) BeforeSave(tx *gorm.DB) error {
-	return p.PassID.Validate()
-}
-
 func (s *Session) BeforeSave(tx *gorm.DB) error {
 	if err := s.SessionNo.Validate(); err != nil {
 		return err
@@ -214,7 +210,27 @@ func (cr *CrypticRecord) BeforeSave(tx *gorm.DB) error {
 	return nil
 }
 
-// -- WebAuthn.User Interface Implementations --
+func (wc *WebAuthnCredential) BeforeSave(tx *gorm.DB) error {
+	if err := wc.CredentialID.Validate(); err != nil {
+		return err
+	}
+	if err := wc.PublicKey.Validate(); err != nil {
+		return err
+	}
+	if err := wc.AttestationType.Validate(); err != nil {
+		return err
+	}
+	if err := wc.Transport.Validate(); err != nil {
+		return err
+	}
+	if err := wc.AAGUID.Validate(); err != nil {
+		return err
+	}
+	if err := wc.AuthenticatorName.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
 
 func (u *User) WebAuthnID() []byte {
 	// WebAuthn requires a stable, unique []byte.
@@ -244,7 +260,7 @@ func (u *User) WebAuthnCredentials() []webauthn.Credential {
 		creds = append(creds, webauthn.Credential{
 			ID:              c.CredentialID,
 			PublicKey:       c.PublicKey,
-			AttestationType: c.AttestationType,
+			AttestationType: string(c.AttestationType),
 			Transport:       transports,
 			Flags: webauthn.CredentialFlags{
 				UserPresent:    c.UserPresent,
