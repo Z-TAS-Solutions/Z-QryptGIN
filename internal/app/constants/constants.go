@@ -9,11 +9,11 @@ var EnvKeys = envKeys{
 	CorsAllowedOrigin: "CORS_ALLOWED_ORIGIN",
 	DBDriver:          "DB_DRIVER",
 	DBSource:          "DB_SOURCE",
-	RedisAddress: "REDIS_ADDRESS"
-	RedisPassword: "REDIS_PASSWORD"
-	GmailClientID: "GMAIL_CLIENT_ID"
-	GmailClientSecret: "GMAIL_CLIENT_SECRET"
-	GmailTokenPath: "GMAIL_TOKEN_PATH"
+	RedisAddress: "REDIS_ADDRESS",
+	RedisPassword: "REDIS_PASSWORD",
+	GmailClientID: "GMAIL_CLIENT_ID",
+	GmailClientSecret: "GMAIL_CLIENT_SECRET",
+	GmailTokenPath: "GMAIL_TOKEN_PATH",
 }
 
 var Headers = headers{

@@ -55,7 +55,7 @@ func NewConfig() *Config {
 		},
 		Redis: redisConfig{
 			Address: GetEnvOrPanic(constants.EnvKeys.RedisAddress),
-			Password: os.Getenv(constants.EnvKeys.RedisPassword)
+			Password: GetEnvOrPanic(constants.EnvKeys.RedisPassword)
 		},
 		Gmail: gmailConfig{
 			ClientID: GetEnvOrPanic(constants.EnvKeys.GmailClientID),
