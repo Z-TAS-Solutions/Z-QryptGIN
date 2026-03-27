@@ -17,17 +17,17 @@ type User struct {
 	PhoneNo       PhoneNumber  `gorm:"uniqueIndex"`
 	Nic           NIC          `gorm:"uniqueIndex"`
 	Role          UserRole
-	PasswordHash  string
 	Status        UserStatus        `gorm:"default:Active"`
 	SecurityLevel UserSecurityLevel `gorm:"default:Low"`
 	MFAStatus     bool
 	//Relationships
-	Passkeys      []Passkey            `gorm:"foreignKey:UserID"`
-	Notifications []Notification       `gorm:"foreignKey:UserID"`
-	MfaChallenges []MfaChallenge       `gorm:"foreignKey:UserID"`
-	ActivityLogs  []ActivityLog        `gorm:"foreignKey:UserID"`
-	Sessions      []Session            `gorm:"foreignKey:UserID"`
-	Credentials   []WebAuthnCredential `gorm:"foreignKey:UserID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
+	Passkeys       []Passkey            `gorm:"foreignKey:UserID"`
+	Notifications  []Notification       `gorm:"foreignKey:UserID"`
+	MfaChallenges  []MfaChallenge       `gorm:"foreignKey:UserID"`
+	ActivityLogs   []ActivityLog        `gorm:"foreignKey:UserID"`
+	Sessions       []Session            `gorm:"foreignKey:UserID"`
+	Credentials    []WebAuthnCredential `gorm:"foreignKey:UserID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
+	CrypticRecords []CrypticRecord      `gorm:"foreignKey:UserID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
 }
 
 type Notification struct {
@@ -42,7 +42,17 @@ type Notification struct {
 
 type CrypticRecord struct {
 	gorm.Model
-	UserID uint
+	UserID uint `gorm:"index;not null"`
+
+	SchemaVersion uint16     `gorm:"not null"`
+	TemplateID    TemplateID `gorm:"size:100;index"`
+	TemplateType  string     `gorm:"size:50"`
+	TemplateVer   uint16     `gorm:"not null"`
+
+	TemplateNonce Nonce12     `gorm:"type:bytea;not null"`
+	WrappedDek    CrypticData `gorm:"type:bytea;not null"`
+	WrapNonce     Nonce12     `gorm:"type:bytea;not null"`
+	Ciphertext    CrypticData `gorm:"type:bytea;not null"`
 }
 
 type MfaChallenge struct {
@@ -195,16 +205,51 @@ func (s *Session) BeforeSave(tx *gorm.DB) error {
 	return nil
 }
 
-// WebAuthn.User Interface Implementations
-func (u *User) WebAuthnID() []byte          { return []byte(u.ID) }
-func (u *User) WebAuthnName() string        { return u.Username }
-func (u *User) WebAuthnDisplayName() string { return u.Username }
+func (cr *CrypticRecord) BeforeSave(tx *gorm.DB) error {
+	if err := cr.TemplateID.Validate(); err != nil {
+		return err
+	}
+	if err := cr.TemplateNonce.Validate(); err != nil {
+		return err
+	}
+	if err := cr.WrappedDek.Validate(); err != nil {
+		return err
+	}
+	if err := cr.WrapNonce.Validate(); err != nil {
+		return err
+	}
+	if err := cr.Ciphertext.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+// -- WebAuthn.User Interface Implementations --
+
+func (u *User) WebAuthnID() []byte {
+	// WebAuthn requires a stable, unique []byte.
+	// We cast your UserCustomID to a string, then to a byte array.
+	return []byte(string(u.CustomID))
+}
+
+func (u *User) WebAuthnName() string {
+	// The unique identifier the browser uses to distinguish accounts.
+	// Casting your custom Email type to a standard string.
+	return string(u.Email)
+}
+
+func (u *User) WebAuthnDisplayName() string {
+	// The friendly name displayed on the user's security key or phone.
+	// Casting your custom Name type to a standard string.
+	return string(u.Name)
+}
+
 func (u *User) WebAuthnCredentials() []webauthn.Credential {
 	var creds []webauthn.Credential
 	for _, c := range u.Credentials {
 		// Deserialize the stored JSON transports
 		var transports []protocol.AuthenticatorTransport
-		_ = json.Unmarshal(c.Transports, &transports)
+		_ = json.Unmarshal(c.Transport, &transports)
 
 		creds = append(creds, webauthn.Credential{
 			ID:              c.CredentialID,

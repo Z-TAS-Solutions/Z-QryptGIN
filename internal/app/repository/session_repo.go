@@ -14,6 +14,8 @@ type SessionRepository interface {
 	StoreSession(ctx context.Context, sessionID string, userID uint, expiration time.Duration) error
 	GetUserIDBySession(ctx context.Context, sessionID string) (uint, error)
 	IncrementAnalytics(ctx context.Context, metricKey string) error
+	CreateSession(ctx context.Context, session *dto.Session) error
+	GetSessionByJTI(ctx context.Context, jti string) (*dto.Session, error)
 }
 
 type sessionRepository struct {

@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/app/dto"
 	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/app/repository"
 	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/app/service"
 	"github.com/gin-gonic/gin"

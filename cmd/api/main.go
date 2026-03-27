@@ -61,15 +61,17 @@ func main() {
 	fmt.Println("Initializing Repositories...")
 	// 6. Initialize Repositories
 	userRepo := repository.NewUserRepository(db)
-	sessionRepo := repository.NewSessionRepository(redisClient)
+	// sessionRepo := repository.NewSessionRepository(redisClient)
 
 	fmt.Println("Initializing Services...")
 	// 7. Initialize Services
-	userSvc := service.NewUserService(userRepo, sessionRepo, emailSvc)
+	// userSvc := service.NewUserService(userRepo, sessionRepo, emailSvc)
+	userRegistrationSvc := service.NewUserRegistrationService(userRepo, redisClient, emailSvc)
 
 	fmt.Println("Initializing Handlers...")
 	// 8. Initialize Handlers
-	userHandler := handlers.NewUserHandler(userSvc)
+	// userHandler := handlers.NewUserHandler(userSvc)
+	userRegistrationHandler := handlers.NewUserRegistrationHandler(userRegistrationSvc)
 
 	fmt.Println("Setting up Gin Router...")
 	// 9. Setup Gin Router
@@ -80,7 +82,8 @@ func main() {
 	// API Routes
 	v1 := router.Group("/api/v1/admin")
 	{
-		v1.POST("/users/RegisterUser", userHandler.Register)
+		// v1.POST("/users/RegisterUser", userHandler.Register)
+		v1.POST("/users/Register", userRegistrationHandler.Register)
 	}
 
 	fmt.Println("Starting the server...")

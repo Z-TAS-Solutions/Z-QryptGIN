@@ -8,6 +8,8 @@ import (
 type UserRepository interface {
 	Create(user *database.User) error
 	FindByEmail(email string) (*database.User, error)
+	FindByPhoneNo(phone string) (*database.User, error)
+	FindByNic(nic string) (*database.User, error)
 }
 
 type userRepository struct {
@@ -25,5 +27,17 @@ func (r *userRepository) Create(user *database.User) error {
 func (r *userRepository) FindByEmail(email string) (*database.User, error) {
 	var user database.User
 	err := r.db.Where("email = ?", email).First(&user).Error
+	return &user, err
+}
+
+func (r *userRepository) FindByPhoneNo(phone string) (*database.User, error) {
+	var user database.User
+	err := r.db.Where("phone_no = ?", phone).First(&user).Error
+	return &user, err
+}
+
+func (r *userRepository) FindByNic(nic string) (*database.User, error) {
+	var user database.User
+	err := r.db.Where("nic = ?", nic).First(&user).Error
 	return &user, err
 }
