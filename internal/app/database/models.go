@@ -79,6 +79,14 @@ type Session struct {
 	LastActive time.Time
 }
 
+type SystemConfiguration struct {
+	gorm.Model
+	SessionTimeoutMinutes  int    `gorm:"default:30"`
+	MaxFailedLoginAttempts int    `gorm:"default:5"`
+	AllowedAdminIpRanges   string `gorm:"type:text"` // Comma-separated list of IP ranges
+	EnforceMfa             bool   `gorm:"default:false"`
+}
+
 //-- GORM Hooks to early fail validation logic--
 
 // BeforeSave hooks for automatic validation in GORM

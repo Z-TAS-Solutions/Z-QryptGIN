@@ -27,7 +27,7 @@ func NewUserService(
 ) UserService {
 	return &userService{
 		repo:    repo,
-		session: session,
+		Session: session,
 		email:   email,
 	}
 }
@@ -61,9 +61,9 @@ func (s *userService) RegisterUser(req dto.CreateUserRequest) (*dto.UserResponse
 
 	// Map GORM Model back to Response DTO
 	return &dto.UserResponse{
-		ID:    uint(user.ID),
-		Name:  user.Name,
-		Email: string(user.Email),
+		Success: true,
+		Name:    user.Name,
+		Email:   string(user.Email),
 	}, nil
 }
 

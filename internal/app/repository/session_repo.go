@@ -13,7 +13,11 @@ import (
 type SessionRepository interface {
 	StoreSession(ctx context.Context, sessionID string, userID uint, expiration time.Duration) error
 	GetUserIDBySession(ctx context.Context, sessionID string) (uint, error)
+	GetSessionByJTI(ctx context.Context, jti string) (*dto.Session, error)
+	GetSessionDataByJTI(ctx context.Context, jti string) (*dto.SessionData, error)
+	UpdateLastActive(ctx context.Context, jti string) error
 	IncrementAnalytics(ctx context.Context, metricKey string) error
+	CreateSession(ctx context.Context, session *dto.Session) error
 }
 
 type sessionRepository struct {
@@ -38,6 +42,16 @@ func (r *sessionRepository) GetUserIDBySession(ctx context.Context, sessionID st
 		return 0, err // Returns redis.Nil if the session doesn't exist or expired
 	}
 	return uint(userIDStr), nil
+}
+
+func (r *sessionRepository) GetSessionDataByJTI(ctx context.Context, jti string) (*dto.SessionData, error) {
+	// Stub until mapped
+	return &dto.SessionData{IsActive: true, MfaStatus: "Verified", ID: "mock_id"}, nil
+}
+
+func (r *sessionRepository) UpdateLastActive(ctx context.Context, jti string) error {
+	// Stub mapped
+	return nil
 }
 
 // IncrementAnalytics is a lightning-fast counter for API metrics
