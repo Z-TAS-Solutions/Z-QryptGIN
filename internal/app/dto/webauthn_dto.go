@@ -1,10 +1,13 @@
 package dto
 
-import "github.com/go-webauthn/webauthn/protocol"
+import (
+	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/app/database"
+	"github.com/go-webauthn/webauthn/protocol"
+)
 
 // Endpoint 1: Fetch Registration Args (/register/begin)
 type RegisterBeginRequest struct {
-	Username string `json:"username" binding:"required"`
+	Email database.Email `json:"email" binding:"required"`
 }
 
 type RegisterBeginResponse struct {

@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"github.com/go-webauthn/webauthn/protocol"
+	"github.com/go-webauthn/webauthn/protocol/webauthncose" // Import the COSE algorithms package
 	"github.com/go-webauthn/webauthn/webauthn"
 )
 
@@ -10,12 +11,17 @@ func getRegistrationOptions() []webauthn.RegistrationOption {
 		func(cco *protocol.PublicKeyCredentialCreationOptions) {
 			// Registration Settings -> Supported Public Key Algorithms: Ed25519, ES256
 			cco.Parameters = []protocol.CredentialParameter{
-				{Type: protocol.PublicKeyCredentialType, Algorithm: protocol.AlgEdDSA}, // Ed25519
-				{Type: protocol.PublicKeyCredentialType, Algorithm: protocol.AlgES256}, // ES256
+				// Use the webauthncose package for algorithm constants
+				{Type: protocol.PublicKeyCredentialType, Algorithm: webauthncose.AlgEdDSA},
+				{Type: protocol.PublicKeyCredentialType, Algorithm: webauthncose.AlgES256},
 			}
 
-			// Registration Settings -> Hints: ["security-key", "client-device"]
-			cco.Hints = []string{"security-key", "client-device"}
+			// Registration Settings -> Hints
+			// Explicitly cast strings to the library's required custom type
+			cco.Hints = []protocol.PublicKeyCredentialHints{
+				protocol.PublicKeyCredentialHints("security-key"),
+				protocol.PublicKeyCredentialHints("client-device"),
+			}
 		},
 	}
 }
@@ -26,8 +32,12 @@ func getRegistrationOptions() []webauthn.RegistrationOption {
 func getLoginOptions() []webauthn.LoginOption {
 	return []webauthn.LoginOption{
 		func(cro *protocol.PublicKeyCredentialRequestOptions) {
-			// Authentication Settings -> Hints: ["security-key", "client-device"]
-			cro.Hints = []string{"security-key", "client-device"}
+			// Authentication Settings -> Hints
+			// Explicitly cast strings to the library's required custom type
+			cro.Hints = []protocol.PublicKeyCredentialHints{
+				protocol.PublicKeyCredentialHints("security-key"),
+				protocol.PublicKeyCredentialHints("client-device"),
+			}
 
 			// Authentication Settings -> User Verification: Required
 			cro.UserVerification = protocol.VerificationRequired
@@ -37,5 +47,3 @@ func getLoginOptions() []webauthn.LoginOption {
 
 // Usage in Handler:
 // sessionData, assertionData, err := wa.BeginLogin(user, getLoginOptions()...)
-// Or, if using a username-less flow via Discoverable Credentials:
-// sessionData, assertionData, err := wa.BeginDiscoverableLogin(getLoginOptions()...)

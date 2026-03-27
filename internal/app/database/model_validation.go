@@ -25,6 +25,9 @@ var (
 	ErrInvalidMfaStatus      = errors.New("invalid MFA status")
 	ErrInvalidMfaDecision    = errors.New("invalid MFA decision")
 	ErrInvalidRole           = errors.New("invalid user role")
+	ErrInvalidTemplateID     = errors.New("template ID cannot be empty")
+	ErrInvalidNonce          = errors.New("invalid nonce length (expected 12 bytes)")
+	ErrInvalidCrypticData    = errors.New("cryptic data (DEK/Ciphertext) cannot be empty")
 )
 
 // --- Regex Pre-compilation ---
@@ -139,6 +142,33 @@ type SessionID string
 func (si SessionID) Validate() error {
 	if !sessionIDRegex.MatchString(string(si)) {
 		return ErrInvalidSessionID
+	}
+	return nil
+}
+
+type TemplateID string
+
+func (t TemplateID) Validate() error {
+	if len(t) == 0 {
+		return ErrInvalidTemplateID
+	}
+	return nil
+}
+
+type Nonce12 []byte
+
+func (n Nonce12) Validate() error {
+	if len(n) != 12 {
+		return ErrInvalidNonce
+	}
+	return nil
+}
+
+type CrypticData []byte
+
+func (cd CrypticData) Validate() error {
+	if len(cd) == 0 {
+		return ErrInvalidCrypticData
 	}
 	return nil
 }
