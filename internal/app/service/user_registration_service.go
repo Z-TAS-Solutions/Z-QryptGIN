@@ -112,7 +112,10 @@ func (s *userRegistrationService) findExistingCacheEntry(ctx context.Context, re
 
 		var entry cache.RegistrationCache
 		if err := json.Unmarshal([]byte(val), &entry); err != nil {
-			return nil, err
+			// If the cache value is malformed (e.g., non-JSON payload), remove stale key and continue lookup
+			log.Warn().Err(err).Str("key", key).Msg("Malformed user registration cache entry, deleting stale value")
+			_ = s.redisClient.Del(ctx, key).Err()
+			continue
 		}
 
 		if entry.UserID == "" {

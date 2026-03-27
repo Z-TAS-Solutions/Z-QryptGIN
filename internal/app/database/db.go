@@ -23,6 +23,19 @@ func NewDatabaseConnection(dsn string) (*gorm.DB, error) {
 	sqlDB.SetMaxOpenConns(100)          // Limit max open connections to prevent DB overload
 	sqlDB.SetConnMaxLifetime(time.Hour) // Recycle connections every hour
 
+	// Ensure all defined models are migrated to the DB schema.
+	// If the tables (or new fields) are missing, GORM will create/alter them.
+	if err := db.AutoMigrate(
+		&User{},
+		&Notification{},
+		&CrypticRecord{},
+		&MfaChallenge{},
+		&ActivityLog{},
+		&Session{},
+		&WebAuthnCredential{},
+	); err != nil {
+		return nil, err
+	}
 
 	return db, nil
 }

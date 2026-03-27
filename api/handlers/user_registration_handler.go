@@ -19,7 +19,11 @@ func NewUserRegistrationHandler(svc service.UserRegistrationService) *UserRegist
 func (h *UserRegistrationHandler) Register(c *gin.Context) {
 	var req dto.UserRegistrationDetailsRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.Error(err)
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+			"status":  "error",
+			"code":    http.StatusBadRequest,
+			"message": "invalid JSON payload: " + err.Error(),
+		})
 		return
 	}
 

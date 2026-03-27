@@ -1,6 +1,7 @@
 package server
 
 import (
+	"encoding/json"
 	"errors"
 	"net/http"
 
@@ -15,10 +16,10 @@ func ErrorHandler() gin.HandlerFunc {
 		if len(c.Errors) > 0 {
 			err := c.Errors.Last().Err
 
-			if isValidationError(err) {
+			if isValidationError(err) || isJSONDecodeError(err) {
 				c.JSON(http.StatusBadRequest, gin.H{
 					"status":  "error",
-					"code":    400,
+					"code":    http.StatusBadRequest,
 					"message": err.Error(),
 				})
 				return
@@ -58,6 +59,15 @@ func isValidationError(err error) bool {
 		if errors.Is(err, vErr) {
 			return true
 		}
+	}
+	return false
+}
+
+func isJSONDecodeError(err error) bool {
+	var syntaxErr *json.SyntaxError
+	var unmarshalTypeErr *json.UnmarshalTypeError
+	if errors.As(err, &syntaxErr) || errors.As(err, &unmarshalTypeErr) {
+		return true
 	}
 	return false
 }

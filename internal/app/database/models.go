@@ -78,16 +78,6 @@ type ActivityLog struct {
 	Type       ActivityLogType
 }
 
-type Passkey struct {
-	gorm.Model
-	UserID    uint
-	PassID    PasskeyID `gorm:"uniqueIndex"`
-	Name      string
-	PublicKey string
-	BackedUp  *string
-	Transport string
-}
-
 type Session struct {
 	gorm.Model
 	UserID     uint
