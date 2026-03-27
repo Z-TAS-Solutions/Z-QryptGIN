@@ -1,14 +1,17 @@
 package database
 
 import (
+	"encoding/json"
 	"time"
 
+	"github.com/go-webauthn/webauthn/protocol"
+	"github.com/go-webauthn/webauthn/webauthn"
 	"gorm.io/gorm"
 )
 
 type User struct {
 	gorm.Model
-	Name          string
+	Name          Name
 	CustomID      UserCustomID `gorm:"uniqueIndex;size:10"`
 	Email         Email        `gorm:"uniqueIndex"`
 	PhoneNo       PhoneNumber  `gorm:"uniqueIndex"`
@@ -19,11 +22,12 @@ type User struct {
 	SecurityLevel UserSecurityLevel `gorm:"default:Low"`
 	MFAStatus     bool
 	//Relationships
-	Passkeys      []Passkey      `gorm:"foreignKey:UserID"`
-	Notifications []Notification `gorm:"foreignKey:UserID"`
-	MfaChallenges []MfaChallenge `gorm:"foreignKey:UserID"`
-	ActivityLogs  []ActivityLog  `gorm:"foreignKey:UserID"`
-	Sessions      []Session      `gorm:"foreignKey:UserID"`
+	Passkeys      []Passkey            `gorm:"foreignKey:UserID"`
+	Notifications []Notification       `gorm:"foreignKey:UserID"`
+	MfaChallenges []MfaChallenge       `gorm:"foreignKey:UserID"`
+	ActivityLogs  []ActivityLog        `gorm:"foreignKey:UserID"`
+	Sessions      []Session            `gorm:"foreignKey:UserID"`
+	Credentials   []WebAuthnCredential `gorm:"foreignKey:UserID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
 }
 
 type Notification struct {
@@ -34,6 +38,11 @@ type Notification struct {
 	Message    string
 	NotifyType NotificationType `gorm:"unique"`
 	IsRead     bool
+}
+
+type CrypticRecord struct {
+	gorm.Model
+	UserID uint
 }
 
 type MfaChallenge struct {
@@ -79,11 +88,42 @@ type Session struct {
 	LastActive time.Time
 }
 
+type WebAuthnCredential struct {
+	gorm.Model
+	UserID uint `gorm:"index;not null"`
+
+	// FIDO2 / WebAuthn Core Data
+	CredentialID    []byte `gorm:"type:bytea;uniqueIndex;not null"` // The 'kid'
+	PublicKey       []byte `gorm:"type:bytea;not null"`
+	AttestationType string `gorm:"size:64"`
+
+	// Transport is stored as JSON (e.g., ["usb", "ble", "nfc", "internal"])
+	// This matches your preference for "Security-key" vs "client-device"
+	Transport []byte `gorm:"type:jsonb"`
+
+	// FIDO2 Flags & Backup Status
+	UserPresent    bool
+	UserVerified   bool
+	BackupEligible bool // Can this passkey be synced?
+	BackupState    bool // Is it currently synced/backed up?
+
+	// Authenticator Metadata
+	AAGUID       []byte `gorm:"type:bytea"` // Identifies the device model
+	SignCount    uint32 `gorm:"not null;default:0"`
+	CloneWarning bool   `gorm:"default:false"`
+
+	// Friendly Name (consistent with your Passkey struct)
+	AuthenticatorName string `gorm:"size:100"`
+}
+
 //-- GORM Hooks to early fail validation logic--
 
 // BeforeSave hooks for automatic validation in GORM
 
 func (u *User) BeforeSave(tx *gorm.DB) error {
+	if err := u.Name.Validate(); err != nil {
+		return err
+	}
 	if err := u.CustomID.Validate(); err != nil {
 		return err
 	}
@@ -153,4 +193,36 @@ func (s *Session) BeforeSave(tx *gorm.DB) error {
 		return err
 	}
 	return nil
+}
+
+// WebAuthn.User Interface Implementations
+func (u *User) WebAuthnID() []byte          { return []byte(u.ID) }
+func (u *User) WebAuthnName() string        { return u.Username }
+func (u *User) WebAuthnDisplayName() string { return u.Username }
+func (u *User) WebAuthnCredentials() []webauthn.Credential {
+	var creds []webauthn.Credential
+	for _, c := range u.Credentials {
+		// Deserialize the stored JSON transports
+		var transports []protocol.AuthenticatorTransport
+		_ = json.Unmarshal(c.Transports, &transports)
+
+		creds = append(creds, webauthn.Credential{
+			ID:              c.CredentialID,
+			PublicKey:       c.PublicKey,
+			AttestationType: c.AttestationType,
+			Transport:       transports,
+			Flags: webauthn.CredentialFlags{
+				UserPresent:    c.UserPresent,
+				UserVerified:   c.UserVerified,
+				BackupEligible: c.BackupEligible,
+				BackupState:    c.BackupState,
+			},
+			Authenticator: webauthn.Authenticator{
+				AAGUID:       c.AAGUID,
+				SignCount:    c.SignCount,
+				CloneWarning: c.CloneWarning,
+			},
+		})
+	}
+	return creds
 }

@@ -11,7 +11,7 @@ import (
 )
 
 type UserService interface {
-	RegisterUser(req dto.CreateUserRequest) (*dto.UserResponse, error)
+	RegisterUser(req dto.CreateUserRequest) (*dto.CreateUserResponse, error)
 }
 
 type userService struct {
@@ -27,12 +27,12 @@ func NewUserService(
 ) UserService {
 	return &userService{
 		repo:    repo,
-		session: session,
+		Session: session,
 		email:   email,
 	}
 }
 
-func (s *userService) RegisterUser(req dto.CreateUserRequest) (*dto.UserResponse, error) {
+func (s *userService) RegisterUser(req dto.CreateUserRequest) (*dto.CreateUserResponse, error) {
 	// 1. TODO: Hash the password using argon2id (Gotta do this before deploying anything)
 	hashedPassword := "hashed_password_placeholder"
 
@@ -60,10 +60,11 @@ func (s *userService) RegisterUser(req dto.CreateUserRequest) (*dto.UserResponse
 	}
 
 	// Map GORM Model back to Response DTO
-	return &dto.UserResponse{
-		ID:    uint(user.ID),
-		Name:  user.Name,
-		Email: string(user.Email),
+	return &dto.CreateUserResponse{
+		Success:  true,
+		CustomID: string(user.CustomID),
+		Name:     user.Name,
+		Email:    string(user.Email),
 	}, nil
 }
 
