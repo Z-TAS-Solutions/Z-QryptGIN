@@ -1,7 +1,5 @@
 package dto
 
-import "github.com/Z-TAS-Solutions/Z-QryptGIN/internal/app/database"
-
 // CreateUserRequest is what the client sends
 type CreateUserRequest struct {
 	Name     string      `json:"name" binding:"required"`

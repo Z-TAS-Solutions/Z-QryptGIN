@@ -9,11 +9,11 @@ var EnvKeys = envKeys{
 	CorsAllowedOrigin: "CORS_ALLOWED_ORIGIN",
 	DBDriver:          "DB_DRIVER",
 	DBSource:          "DB_SOURCE",
-	RedisAddress: "REDIS_ADDRESS",
-	RedisPassword: "REDIS_PASSWORD",
-	GmailClientID: "GMAIL_CLIENT_ID",
+	RedisAddress:      "REDIS_ADDRESS",
+	RedisPassword:     "REDIS_PASSWORD",
+	GmailClientID:     "GMAIL_CLIENT_ID",
 	GmailClientSecret: "GMAIL_CLIENT_SECRET",
-	GmailTokenPath: "GMAIL_TOKEN_PATH",
+	GmailTokenPath:    "GMAIL_TOKEN_PATH",
 }
 
 var Headers = headers{
@@ -29,11 +29,11 @@ type envKeys struct {
 	CorsAllowedOrigin string
 	DBDriver          string
 	DBSource          string
-	RedisAddress string
-	RedisPassword string
-	GmailClientID string
+	RedisAddress      string
+	RedisPassword     string
+	GmailClientID     string
 	GmailClientSecret string
-	GmailTokenPath string
+	GmailTokenPath    string
 }
 
 type headers struct {

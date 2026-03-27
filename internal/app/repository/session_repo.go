@@ -51,7 +51,6 @@ func (r *sessionRepository) CreateSession(ctx context.Context, session *dto.Sess
 	if err != nil {
 		return err
 	}
-
 	ttl := time.Until(session.ExpiresAt)
 	return r.redis.Set(ctx, "session:"+session.JTI, data, ttl).Err()
 }
