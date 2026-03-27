@@ -2,9 +2,10 @@ package repository
 
 import (
 	"context"
-	"time"
 	"encoding/json"
+	"time"
 
+	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/app/dto"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -50,7 +51,7 @@ func (r *sessionRepository) CreateSession(ctx context.Context, session *dto.Sess
 	if err != nil {
 		return err
 	}
-	
+
 	ttl := time.Until(session.ExpiresAt)
 	return r.redis.Set(ctx, "session:"+session.JTI, data, ttl).Err()
 }

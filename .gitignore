@@ -28,3 +28,4 @@ credentials.json
 configs/*.env
 configs/*.json
 configs/dev.env
+configs\dev.env
