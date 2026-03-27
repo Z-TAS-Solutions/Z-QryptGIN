@@ -46,6 +46,13 @@ func RunRemoteGRPC(compute bool, remoteAddr string) {
 
 func main() {
 	//RunLocalGRPC(true)
-	zpi_client.RunZPiClient("192.168.1.229:50051")
+	
+	log.Println("Dialing Rust IPC Service...")
+	zpipcClient, err := ipc.DialIPC()
+	if err != nil {
+		log.Fatalf("Cannot initialize IPC dialer: %v", err)
+	}
+	defer zpipcClient.Close()
 
+	zpi_client.RunZPiClient("192.168.1.229:50051")
 }
