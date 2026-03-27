@@ -1,7 +1,11 @@
 package main
 
 import (
+	"context"
+	"os"
+
 	"github.com/gin-gonic/gin"
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
 	"github.com/Z-TAS-Solutions/Z-QryptGIN/api/handlers"
@@ -26,7 +30,7 @@ func main() {
 		log.Fatal().Err(err).Msg("Could not connect to database")
 	}
 
-	// 4. Connect to Redis Chache 
+	// 4. Connect to Redis Chache
 	redisClient, err := cache.NewRedisClient(cfg.Redis.Address, cfg.Redis.Password)
 	if err != nil {
 		log.Fatal().Err(err).Msg("Could not connect to Redis")
@@ -37,7 +41,7 @@ func main() {
 	// 5. Start the Email Service
 	logger.Info().Msg("Initializing Email Service...")
 	emailSvc, err := service.NewEmailService(
-		cts,
+		ctx,
 		cfg.Gmail.ClientID,
 		cfg.Gmail.ClientSecret,
 		cfg.Gmail.TokenPath,
@@ -51,7 +55,7 @@ func main() {
 	sessionRepo := repository.NewSessionRepository(redisClient)
 
 	// 7. Initialize Services
-	userSvc := service.NewUserService(userRepo, sessionRepo)
+	userSvc := service.NewUserService(userRepo, sessionRepo, emailSvc)
 
 	// 8. Initialize Handlers
 	userHandler := handlers.NewUserHandler(userSvc)

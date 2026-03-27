@@ -16,7 +16,16 @@
 .glide/
 
 # Dependency directories (remove the comment below to include it)
-# vendor/
+vendor/
 
 # Mac OS X files
 .DS_Store
+
+#Environment Files
+dev.env
+token.json
+credentials.json
+configs/*.env
+configs/*.json
+configs/dev.env
+configs\dev.env

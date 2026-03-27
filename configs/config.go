@@ -15,8 +15,8 @@ import (
 type Config struct {
 	Server   serverConfig
 	Database databaseConfig
-	Redis	redisConfig
-	Gmail	gmailConfig
+	Redis    redisConfig
+	Gmail    gmailConfig
 }
 
 type serverConfig struct {
@@ -29,14 +29,14 @@ type databaseConfig struct {
 }
 
 type redisConfig struct {
-	Address string
+	Address  string
 	Password string
 }
 
 type gmailConfig struct {
-	ClientID string
+	ClientID     string
 	ClientSecret string
-	TokenPath string
+	TokenPath    string
 }
 
 func NewConfig() *Config {
@@ -54,14 +54,14 @@ func NewConfig() *Config {
 			DatabaseSource: GetEnvOrPanic(constants.EnvKeys.DBSource),
 		},
 		Redis: redisConfig{
-			Address: GetEnvOrPanic(constants.EnvKeys.RedisAddress),
-			Password: os.Getenv(constants.EnvKeys.RedisPassword)
+			Address:  GetEnvOrPanic(constants.EnvKeys.RedisAddress),
+			Password: GetEnvOrPanic(constants.EnvKeys.RedisPassword),
 		},
 		Gmail: gmailConfig{
-			ClientID: GetEnvOrPanic(constants.EnvKeys.GmailClientID),
+			ClientID:     GetEnvOrPanic(constants.EnvKeys.GmailClientID),
 			ClientSecret: GetEnvOrPanic(constants.EnvKeys.GmailClientSecret),
-			TokenPath: GetEnvOrPanic(constants.EnvKeys.GmailTokenPath),
-		}
+			TokenPath:    GetEnvOrPanic(constants.EnvKeys.GmailTokenPath),
+		},
 	}
 
 	return c
