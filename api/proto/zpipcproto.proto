@@ -1,0 +1,54 @@
+syntax = "proto3";
+package zpipcproto;
+option go_package = "./internal/pkg/zpipcproto/";
+
+service PingService {
+  rpc Ping(PingRequest) returns (PingResponse);
+}
+
+message PingRequest {
+  string message = 1;
+}
+
+message PingResponse {
+  string reply = 1;
+}
+
+service CrypticService {
+  rpc FetchDecryptedTemplate(FetchTemplateRequest) returns (FetchTemplateResponse);
+  rpc StoreEncryptedTemplate(StoreTemplateRequest) returns (StoreTemplateResponse);
+  rpc MatchTemplate(MatchTemplateRequest) returns (MatchTemplateResponse);
+}
+
+message MatchTemplateRequest {
+  string user_id = 1;
+  bytes live_template_data = 2;
+}
+
+message MatchTemplateResponse {
+  bool is_match = 1;
+  float confidence_score = 2;
+  string error_message = 3;
+}
+
+message FetchTemplateRequest {
+  string user_id = 1;
+}
+
+message FetchTemplateResponse {
+  bool success = 1;
+  bytes template_data = 2;
+  string error_message = 3;
+}
+
+message StoreTemplateRequest {
+  string user_id = 1;
+  string template_id = 2;
+  string template_type = 3;
+  bytes raw_template_data = 4;
+}
+
+message StoreTemplateResponse {
+  bool success = 1;
+  string error_message = 2;
+}
