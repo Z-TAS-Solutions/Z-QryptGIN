@@ -8,6 +8,8 @@ import (
 	"io"
 	"time"
 
+	"github.com/go-webauthn/webauthn/protocol"
+	"github.com/go-webauthn/webauthn/webauthn"
 	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/app/cache"
 	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/app/database"
 	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/app/dto"
@@ -15,24 +17,31 @@ import (
 	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/pkg/ratelimit"
 	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog/log"
+	"gorm.io/gorm"
 )
 
 type UserRegistrationService interface {
 	RegisterUser(ctx context.Context, req dto.UserRegistrationDetailsRequest) (*dto.UserRegistrationDetailsResponse, error)
 	VerifyOTP(ctx context.Context, req dto.UserRegistrationOTPRequest) (*dto.UserRegistrationOTPResponse, error)
 	ResendOTP(ctx context.Context, req dto.ResendOTPRequest) (*dto.ResendOTPResponse, error)
+	FinishRegistration(ctx context.Context, userID database.UserCustomID, parsedResponse *protocol.ParsedCredentialCreationData, sessionData *webauthn.SessionData) error
 }
 
 type userRegistrationService struct {
-	repo        repository.UserRepository
-	redisClient *redis.Client
-	email       EmailService
-	rateLimiter *ratelimit.OTPRateLimiter
+	repo           repository.UserRepository
+	credentialRepo repository.WebAuthnCredentialRepository
+	webauthnSvc    *WebAuthnService
+	redisClient    *redis.Client
+	email          EmailService
+	rateLimiter    *ratelimit.OTPRateLimiter
+	db             *gorm.DB
 }
 
 var (
 	ErrRegistrationNotFound = fmt.Errorf("registration entry not found")
 	ErrInvalidOTP           = fmt.Errorf("invalid otp")
+	ErrInvalidCredential    = fmt.Errorf("invalid credential response")
+	ErrCredentialFailed     = fmt.Errorf("failed to save credential")
 )
 
 func NewUserRegistrationService(repo repository.UserRepository, redisClient *redis.Client, email EmailService) UserRegistrationService {
@@ -41,6 +50,26 @@ func NewUserRegistrationService(repo repository.UserRepository, redisClient *red
 		redisClient: redisClient,
 		email:       email,
 		rateLimiter: ratelimit.NewOTPRateLimiter(redisClient),
+	}
+}
+
+// NewUserRegistrationServiceWithWebAuthn creates a service with WebAuthn support (for finish registration)
+func NewUserRegistrationServiceWithWebAuthn(
+	repo repository.UserRepository,
+	credentialRepo repository.WebAuthnCredentialRepository,
+	redisClient *redis.Client,
+	email EmailService,
+	webauthnSvc *WebAuthnService,
+	db *gorm.DB,
+) UserRegistrationService {
+	return &userRegistrationService{
+		repo:           repo,
+		credentialRepo: credentialRepo,
+		webauthnSvc:    webauthnSvc,
+		redisClient:    redisClient,
+		email:          email,
+		rateLimiter:    ratelimit.NewOTPRateLimiter(redisClient),
+		db:             db,
 	}
 }
 
@@ -230,6 +259,128 @@ func (s *userRegistrationService) ResendOTP(ctx context.Context, req dto.ResendO
 
 	log.Info().Str("user_email", string(entry.Email)).Str("user_id", string(req.UserID)).Msg("OTP resent successfully")
 	return &dto.ResendOTPResponse{Success: true, Message: "OTP sent successfully to your email"}, nil
+}
+
+// FinishRegistration completes the user registration with WebAuthn credential
+// This is called after the user successfully completes the WebAuthn ceremony
+func (s *userRegistrationService) FinishRegistration(ctx context.Context, userID database.UserCustomID, parsedResponse *protocol.ParsedCredentialCreationData, sessionData *webauthn.SessionData) error {
+	// 1) Retrieve the registration cache entry by userID to get all user data
+	regCacheEntry, err := s.findCacheEntryByUserID(ctx, userID)
+	if err != nil {
+		return fmt.Errorf("failed to retrieve registration cache: %w", err)
+	}
+	if regCacheEntry == nil {
+		return ErrRegistrationNotFound
+	}
+
+	// 2) Verify that MFA has been approved
+	if regCacheEntry.MfaStatus != database.MfaApproved {
+		return fmt.Errorf("registration not fully verified - MFA status: %s", regCacheEntry.MfaStatus)
+	}
+
+	// 3) Create a PendingUser implementation for the WebAuthn service
+	pendingUser := &cache.PendingUser{
+		ID:          regCacheEntry.UserID,
+		Email:       regCacheEntry.Email,
+		Name:        regCacheEntry.Name,
+		Credentials: make([]webauthn.Credential, 0), // No existing credentials yet
+	}
+
+	// 4) Verify the credential response and extract the credential
+	verifiedCredential, err := s.webauthnSvc.FinishRegistration(ctx, pendingUser, parsedResponse, sessionData)
+	if err != nil {
+		log.Error().Err(err).Str("user_id", string(userID)).Msg("WebAuthn credential verification failed")
+		return fmt.Errorf("%w: %v", ErrInvalidCredential, err)
+	}
+	if verifiedCredential == nil {
+		return fmt.Errorf("webauthn credential is nil")
+	}
+
+	// 5) Begin database transaction for atomic operations
+	tx := s.db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+			panic(r)
+		}
+	}()
+
+	// 6) Create the user in the database
+	newUser := &database.User{
+		CustomID:      regCacheEntry.UserID,
+		Name:          regCacheEntry.Name,
+		Email:         regCacheEntry.Email,
+		PhoneNo:       regCacheEntry.PhoneNo,
+		Nic:           regCacheEntry.Nic,
+		Role:          regCacheEntry.Role,
+		Status:        database.StatusActive,
+		SecurityLevel: database.SecurityLow,
+		MFAStatus:     true, // User verified via OTP
+	}
+
+	// Use transaction to create user
+	if err := tx.Create(newUser).Error; err != nil {
+		tx.Rollback()
+		log.Error().Err(err).Str("custom_id", string(regCacheEntry.UserID)).Msg("Failed to create user in database")
+		return fmt.Errorf("failed to create user: %w", err)
+	}
+
+	// 7) Save the WebAuthn credential to the database
+	// Need to serialize the transports to JSON for storage
+	transportJSON, err := json.Marshal(verifiedCredential.Transport)
+	if err != nil {
+		tx.Rollback()
+		log.Error().Err(err).Str("user_id", string(userID)).Msg("Failed to marshal transports")
+		return fmt.Errorf("failed to marshal transports: %w", err)
+	}
+
+	webauthnCred := &database.WebAuthnCredential{
+		UserID:          newUser.ID, // Use the auto-assigned database ID
+		CredentialID:    database.CredentialID(verifiedCredential.ID),
+		PublicKey:       database.WebAuthnPublicKey(verifiedCredential.PublicKey),
+		AttestationType: database.AttestationType(verifiedCredential.AttestationType),
+		Transport:       database.WebAuthnTransport(transportJSON),
+		UserPresent:     verifiedCredential.Flags.UserPresent,
+		UserVerified:    verifiedCredential.Flags.UserVerified,
+		BackupEligible:  verifiedCredential.Flags.BackupEligible,
+		BackupState:     verifiedCredential.Flags.BackupState,
+		AAGUID:          database.AAGUID(verifiedCredential.Authenticator.AAGUID),
+		SignCount:       verifiedCredential.Authenticator.SignCount,
+		CloneWarning:    false, // No cloning on first registration
+		AuthenticatorName: database.AuthenticatorName(""), // Empty authenticator name initially
+	}
+
+	// Create credential using transaction
+	if err := tx.Create(webauthnCred).Error; err != nil {
+		tx.Rollback()
+		log.Error().Err(err).Str("user_id", string(userID)).Msg("Failed to save WebAuthn credential")
+		return fmt.Errorf("failed to save credential: %w", err)
+	}
+
+	// 8) Commit the transaction
+	if err := tx.Commit().Error; err != nil {
+		log.Error().Err(err).Str("user_id", string(userID)).Msg("Transaction commit failed")
+		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	// 9) Clean up registration cache entries (remove all related keys)
+	cacheKeys := []string{
+		"registration:email:" + string(regCacheEntry.Email),
+		"registration:phone:" + string(regCacheEntry.PhoneNo),
+		"registration:nic:" + string(regCacheEntry.Nic),
+		"registration:userid:" + string(regCacheEntry.UserID),
+	}
+
+	for _, key := range cacheKeys {
+		_ = s.redisClient.Del(ctx, key).Err()
+	}
+
+	log.Info().
+		Str("user_id", string(userID)).
+		Str("email", string(regCacheEntry.Email)).
+		Msg("User registration completed successfully with WebAuthn credential")
+
+	return nil
 }
 
 func (s *userRegistrationService) entirelyMatchesRequest(entry *cache.RegistrationCache, req dto.UserRegistrationDetailsRequest) bool {

@@ -10,6 +10,7 @@ type UserRepository interface {
 	FindByEmail(email string) (*database.User, error)
 	FindByPhoneNo(phone string) (*database.User, error)
 	FindByNic(nic string) (*database.User, error)
+	FindByCustomID(customID string) (*database.User, error)
 }
 
 type userRepository struct {
@@ -39,5 +40,11 @@ func (r *userRepository) FindByPhoneNo(phone string) (*database.User, error) {
 func (r *userRepository) FindByNic(nic string) (*database.User, error) {
 	var user database.User
 	err := r.db.Where("nic = ?", nic).First(&user).Error
+	return &user, err
+}
+
+func (r *userRepository) FindByCustomID(customID string) (*database.User, error) {
+	var user database.User
+	err := r.db.Where("custom_id = ?", customID).First(&user).Error
 	return &user, err
 }
