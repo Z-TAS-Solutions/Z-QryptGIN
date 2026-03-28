@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -21,13 +22,14 @@ import (
 )
 
 type WebAuthnHandler struct {
-	logger                    zerolog.Logger
-	webauthnSvc              *service.WebAuthnService
-	userRepo                 repository.UserRepository
-	credentialRepo           repository.WebAuthnCredentialRepository
-	sessionCache             *cache.WebAuthnSessionCache
-	userRegistrationService  service.UserRegistrationService
-	redisClient              *redis.Client
+	logger                  zerolog.Logger
+	webauthnSvc             *service.WebAuthnService
+	userRepo                repository.UserRepository
+	credentialRepo          repository.WebAuthnCredentialRepository
+	sessionCache            *cache.WebAuthnSessionCache
+	userRegistrationService service.UserRegistrationService
+	redisClient             *redis.Client
+	jwtService              service.JWTService
 }
 
 // NewWebAuthnHandler creates a new WebAuthnHandler instance
@@ -37,6 +39,7 @@ func NewWebAuthnHandler(
 	userRepo repository.UserRepository,
 	sessionCache *cache.WebAuthnSessionCache,
 	redisClient *redis.Client,
+	jwtService service.JWTService,
 ) *WebAuthnHandler {
 	return &WebAuthnHandler{
 		logger:       logger,
@@ -44,6 +47,7 @@ func NewWebAuthnHandler(
 		userRepo:     userRepo,
 		sessionCache: sessionCache,
 		redisClient:  redisClient,
+		jwtService:   jwtService,
 	}
 }
 
@@ -56,15 +60,17 @@ func NewWebAuthnHandlerWithRegistration(
 	sessionCache *cache.WebAuthnSessionCache,
 	userRegistrationService service.UserRegistrationService,
 	redisClient *redis.Client,
+	jwtService service.JWTService,
 ) *WebAuthnHandler {
 	return &WebAuthnHandler{
-		logger:                   logger,
+		logger:                  logger,
 		webauthnSvc:             webauthnSvc,
 		userRepo:                userRepo,
 		credentialRepo:          credentialRepo,
 		sessionCache:            sessionCache,
 		userRegistrationService: userRegistrationService,
 		redisClient:             redisClient,
+		jwtService:              jwtService,
 	}
 }
 
@@ -249,18 +255,336 @@ func (h *WebAuthnHandler) RegisterFinish(c *gin.Context) {
 	// 5. Delete the session from cache after successful registration
 	_ = h.sessionCache.DeleteRegistrationSession(c.Request.Context(), sessionToken)
 
+	// 6. Load the newly created user from database
+	registeredUser, err := h.userRepo.FindByCustomID(string(wrappedSession.UserID))
+	if err != nil {
+		h.logger.Error().Err(err).Str("user_id", string(wrappedSession.UserID)).Msg("Failed to load registered user")
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status":  "error",
+			"code":    http.StatusInternalServerError,
+			"message": "Registration completed but failed to generate authentication token",
+		})
+		return
+	}
+
+	// 7. Create session object for Redis session tracking
+	// This is the key component of the hybrid approach for the newly registered user
+	registrationSession := &dto.Session{
+		ID:           uuid.New().String(),
+		UserID:       registeredUser.ID,
+		DeviceName:   c.GetHeader("User-Agent"),
+		DeviceID:     fmt.Sprintf("%s-registration", uuid.New().String()),
+		IPAddress:    c.ClientIP(),
+		UserAgent:    c.GetHeader("User-Agent"),
+		IsActive:     true,
+		MfaStatus:    dto.MfaStatusVerified,
+		LastActiveAt: time.Now(),
+		ExpiresAt:    time.Now().Add(30 * 24 * time.Hour), // 30 days expiry
+	}
+
+	// 8. Generate JWT token with session
+	// This will also store the session in Redis via the JWT service
+	userRole := string(registeredUser.Role)
+	jwtToken, jti, expiry, err := h.jwtService.GenerateToken(registeredUser.ID, userRole, registrationSession)
+	if err != nil {
+		h.logger.Error().Err(err).Str("user_id", string(registeredUser.ID)).Msg("Failed to generate JWT token after registration")
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status":  "error",
+			"code":    http.StatusInternalServerError,
+			"message": "Registration completed but failed to generate authentication token",
+		})
+		return
+	}
+
 	h.logger.Info().
 		Str("session_token", sessionToken).
 		Str("user_id", string(wrappedSession.UserID)).
-		Msg("User successfully registered with WebAuthn credential")
+		Str("jti", jti).
+		Str("ip_address", c.ClientIP()).
+		Msg("User successfully registered with WebAuthn credential and authenticated")
 
-	// 6. Return success response
+	// 9. Return success response with JWT token
 	c.JSON(http.StatusCreated, gin.H{
-		"status":  "success",
-		"code":    http.StatusCreated,
-		"message": "Registration completed successfully",
+		"status": "success",
+		"code":   http.StatusCreated,
 		"data": gin.H{
-			"user_id": string(wrappedSession.UserID),
+			"token":      jwtToken,
+			"token_type": "Bearer",
+			"expires_in": expiry.Unix(),
+			"user_id":    registeredUser.ID,
+			"email":      registeredUser.Email,
+			"message":    "Registration completed successfully",
+		},
+	})
+}
+
+// LoginBegin initiates the WebAuthn authentication ceremony
+// POST /api/v1/webauthn/login/begin
+// Expects: Optional username in JSON body (for username-based flow)
+//
+//	Can be empty for usernameless/discoverable credential flow
+func (h *WebAuthnHandler) LoginBegin(c *gin.Context) {
+	var req dto.LoginBeginRequest
+
+	// Bind and validate request (username is optional)
+	if err := c.ShouldBindJSON(&req); err != nil {
+		h.logger.Error().Err(err).Msg("Invalid request payload for LoginBegin")
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status":  "error",
+			"code":    http.StatusBadRequest,
+			"message": "Invalid request payload: " + err.Error(),
+		})
+		return
+	}
+
+	var sessionData *webauthn.SessionData
+	var assertionData *protocol.CredentialAssertion
+	var err error
+
+	// Determine if this is a username-based or usernameless flow
+	if req.Username != "" {
+		// Username-based authentication: Look up the user
+		user, err := h.userRepo.FindByEmail(req.Username)
+		if err != nil {
+			h.logger.Warn().Str("username", req.Username).Err(err).Msg("User not found for login")
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"status":  "error",
+				"code":    http.StatusUnauthorized,
+				"message": "User not found",
+			})
+			return
+		}
+
+		// Begin login for this specific user
+		sessionData, assertionData, err = h.webauthnSvc.BeginLogin(c.Request.Context(), user)
+		if err != nil {
+			h.logger.Error().Err(err).Str("username", req.Username).Msg("Failed to begin WebAuthn login")
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"status":  "error",
+				"code":    http.StatusInternalServerError,
+				"message": "Failed to initiate login: " + err.Error(),
+			})
+			return
+		}
+	} else {
+		// Usernameless/Discoverable Credential flow
+		// Let the authenticator device choose which account to sign in with
+		sessionData, assertionData, err = h.webauthnSvc.BeginLogin(c.Request.Context(), nil)
+		if err != nil {
+			h.logger.Error().Err(err).Msg("Failed to begin WebAuthn usernameless login")
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"status":  "error",
+				"code":    http.StatusInternalServerError,
+				"message": "Failed to initiate login: " + err.Error(),
+			})
+			return
+		}
+	}
+
+	// Generate a unique session token
+	sessionToken := generateSessionToken()
+
+	// Store session data in cache with TTL
+	err = h.sessionCache.StoreAuthenticationSession(c.Request.Context(), sessionToken, sessionData)
+	if err != nil {
+		h.logger.Error().Err(err).Str("session_token", sessionToken).Msg("Failed to store authentication session in cache")
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status":  "error",
+			"code":    http.StatusInternalServerError,
+			"message": "Failed to store session data",
+		})
+		return
+	}
+
+	h.logger.Info().
+		Str("session_token", sessionToken).
+		Str("username", req.Username).
+		Msg("Authentication ceremony initiated")
+
+	// Return response
+	c.JSON(http.StatusOK, gin.H{
+		"status": "success",
+		"data": dto.LoginBeginResponse{
+			SessionToken:  sessionToken,
+			AssertionData: assertionData,
+		},
+	})
+}
+
+// LoginFinish completes the WebAuthn authentication ceremony and generates JWT token
+// POST /api/v1/webauthn/login/finish
+// Expects: X-Session-Token header + raw credential assertion response in body
+// Returns: JWT token with session data for hybrid-stateless/stateful authentication
+func (h *WebAuthnHandler) LoginFinish(c *gin.Context) {
+	// 1. Extract session token from header
+	sessionToken := c.GetHeader("X-Session-Token")
+	if sessionToken == "" {
+		h.logger.Warn().Msg("Missing X-Session-Token header")
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+			"status":  "error",
+			"code":    http.StatusBadRequest,
+			"message": "Missing X-Session-Token header",
+		})
+		return
+	}
+
+	// 2. Retrieve the session from cache
+	sessionData, err := h.sessionCache.GetAuthenticationSession(c.Request.Context(), sessionToken)
+	if err != nil {
+		h.logger.Warn().Str("session_token", sessionToken).Err(err).Msg("Failed to retrieve authentication session")
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+			"status":  "error",
+			"code":    http.StatusUnauthorized,
+			"message": "Session expired or invalid",
+		})
+		return
+	}
+
+	// 3. Parse the credential assertion response from the request body
+	assertionResponse, err := protocol.ParseCredentialRequestResponseBody(c.Request.Body)
+	if err != nil {
+		h.logger.Error().Err(err).Str("session_token", sessionToken).Msg("Failed to parse credential assertion response")
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+			"status":  "error",
+			"code":    http.StatusBadRequest,
+			"message": "Invalid assertion response: " + err.Error(),
+		})
+		return
+	}
+
+	// 4. Find the credential by credential ID
+	credentialID := assertionResponse.RawID
+	credential, err := h.credentialRepo.FindCredentialByID(credentialID)
+	if err != nil {
+		h.logger.Warn().Bytes("credential_id", credentialID).Err(err).Msg("Credential not found for login")
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"status":  "error",
+			"code":    http.StatusUnauthorized,
+			"message": "Authentication failed: credential not recognized",
+		})
+		return
+	}
+
+	// 5. Load the user from the database by ID
+	authenticatedUser, err := h.userRepo.FindByID(credential.UserID)
+	if err != nil {
+		h.logger.Error().Err(err).Uint("user_id", credential.UserID).Msg("Failed to load user for authentication")
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status":  "error",
+			"code":    http.StatusInternalServerError,
+			"message": "Authentication failed",
+		})
+		return
+	}
+
+	// 6. Load user credentials for WebAuthn verification
+	credentials, err := h.credentialRepo.FindCredentialsByUserID(authenticatedUser.ID)
+	if err != nil {
+		h.logger.Error().Err(err).Str("user_id", string(credential.UserID)).Msg("Failed to load user credentials")
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status":  "error",
+			"code":    http.StatusInternalServerError,
+			"message": "Authentication failed",
+		})
+		return
+	}
+
+	// 7. Create webauthn.User interface for verification
+	webauthnUser := &cache.PendingUser{
+		ID:          authenticatedUser.CustomID,
+		Email:       authenticatedUser.Email,
+		Name:        authenticatedUser.Name,
+		Credentials: credentialsToWebAuthnCredentials(credentials),
+	}
+
+	// 8. Complete the WebAuthn login ceremony
+	userData, err := h.webauthnSvc.FinishLogin(c.Request.Context(), webauthnUser, assertionResponse, sessionData)
+	if err != nil {
+		h.logger.Error().Err(err).Str("user_id", string(authenticatedUser.ID)).Msg("WebAuthn login verification failed")
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"status":  "error",
+			"code":    http.StatusUnauthorized,
+			"message": "Authentication failed: " + err.Error(),
+		})
+		return
+	}
+
+	// 9. Check for cloned credentials (sign count anomaly)
+	if userData.Sign < credential.SignCount {
+		h.logger.Warn().
+			Uint("user_id", authenticatedUser.ID).
+			Uint32("stored_sign_count", credential.SignCount).
+			Uint32("new_sign_count", userData.Sign).
+			Msg("Potential cloned credential detected")
+		_ = h.credentialRepo.UpdateCloneWarning(credentialID, true)
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"status":  "error",
+			"code":    http.StatusUnauthorized,
+			"message": "Authentication rejected: potential credential cloning detected",
+		})
+		return
+	}
+
+	// 10. Update the sign count for this credential
+	err = h.credentialRepo.UpdateSignCount(credentialID, userData.Sign)
+	if err != nil {
+		h.logger.Error().Err(err).Msg("Failed to update credential sign count")
+		// Non-fatal, continue with login
+	}
+
+	// 11. Create session object for Redis session tracking
+	// This is the key component of the hybrid approach
+	deviceID := string(credential.AuthenticatorName)
+	if deviceID == "" {
+		// Use credential ID hex representation as device identifier
+		deviceID = fmt.Sprintf("device-%d", credential.ID)
+	}
+	sessionInfo := &dto.Session{
+		ID:           uuid.New().String(),
+		UserID:       authenticatedUser.ID,
+		DeviceName:   c.GetHeader("User-Agent"), // User-Agent as device identifier
+		DeviceID:     deviceID,
+		IPAddress:    c.ClientIP(),
+		UserAgent:    c.GetHeader("User-Agent"),
+		IsActive:     true,
+		MfaStatus:    dto.MfaStatusVerified,
+		LastActiveAt: time.Now(),
+		ExpiresAt:    time.Now().Add(30 * 24 * time.Hour), // 30 days expiry
+	}
+
+	// 12. Generate JWT token with session
+	// This will also store the session in Redis via the JWT service
+	userRole := string(authenticatedUser.Role)
+	jwtToken, jti, expiry, err := h.jwtService.GenerateToken(authenticatedUser.ID, userRole, sessionInfo)
+	if err != nil {
+		h.logger.Error().Err(err).Str("user_id", string(authenticatedUser.ID)).Msg("Failed to generate JWT token")
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status":  "error",
+			"code":    http.StatusInternalServerError,
+			"message": "Failed to generate authentication token",
+		})
+		return
+	}
+
+	// 13. Clean up WebAuthn session from cache
+	_ = h.sessionCache.DeleteAuthenticationSession(c.Request.Context(), sessionToken)
+
+	h.logger.Info().
+		Str("user_id", string(authenticatedUser.ID)).
+		Str("jti", jti).
+		Str("ip_address", c.ClientIP()).
+		Msg("User successfully authenticated via WebAuthn")
+
+	// 14. Return JWT token to client
+	c.JSON(http.StatusOK, gin.H{
+		"status": "success",
+		"code":   http.StatusOK,
+		"data": gin.H{
+			"token":      jwtToken,
+			"token_type": "Bearer",
+			"expires_in": expiry.Unix(),
+			"user_id":    authenticatedUser.ID,
+			"email":      authenticatedUser.Email,
 		},
 	})
 }
@@ -298,4 +622,21 @@ func (h *WebAuthnHandler) getRegistrationCacheByEmail(ctx context.Context, email
 // generateSessionToken creates a unique session token for WebAuthn ceremonies
 func generateSessionToken() string {
 	return uuid.New().String() + ":" + time.Now().Format("20060102150405")
+}
+
+// credentialsToWebAuthnCredentials converts database WebAuthn credentials to webauthn.Credential format
+func credentialsToWebAuthnCredentials(dbCredentials []database.WebAuthnCredential) []webauthn.Credential {
+	var waCredentials []webauthn.Credential
+	for _, dbCred := range dbCredentials {
+		transports := []string{}
+		if len(dbCred.Transport) > 0 {
+			transports = dbCred.Transport
+		}
+		waCredentials = append(waCredentials, webauthn.Credential{
+			ID:        dbCred.CredentialID,
+			PublicKey: dbCred.PublicKey,
+			Sign:      dbCred.SignCount,
+		})
+	}
+	return waCredentials
 }

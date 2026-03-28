@@ -81,7 +81,7 @@ func (conf *Config) CorsNew() gin.HandlerFunc {
 
 	return cors.New(cors.Config{
 		AllowMethods:     []string{http.MethodGet, http.MethodPost, http.MethodOptions},
-		AllowHeaders:     []string{constants.Headers.Origin, "Content-Type", "Accept", "Authorization"},
+		AllowHeaders:     []string{constants.Headers.Origin, "Content-Type", "Accept", "Authorization", "X-Session-Token"},
 		ExposeHeaders:    []string{constants.Headers.ContentLength},
 		AllowCredentials: true,
 		AllowOriginFunc: func(origin string) bool {

@@ -107,3 +107,51 @@ func (s *WebAuthnService) FinishRegistration(ctx context.Context, user webauthn.
 	}
 	return credential, nil
 }
+
+// getAuthenticationOptions returns the array of authentication options for BeginLogin
+func (s *WebAuthnService) getAuthenticationOptions() []webauthn.LoginOption {
+	return []webauthn.LoginOption{
+		func(cco *protocol.PublicKeyCredentialRequestOptions) {
+			// Authentication Settings -> User Verification: Required
+			cco.UserVerification = protocol.VerificationRequired
+		},
+	}
+}
+
+// BeginLogin initiates the WebAuthn authentication ceremony
+// This starts the passkey login/authentication flow
+// Can be called with a specific user for username-based flow, or nil for usernameless flow
+func (s *WebAuthnService) BeginLogin(ctx context.Context, user webauthn.User) (*webauthn.SessionData, *protocol.CredentialAssertion, error) {
+	// If user is provided, begin login for that user
+	// Otherwise, begin a usernameless flow
+	var assertionData *protocol.CredentialAssertion
+	var sessionData *webauthn.SessionData
+	var err error
+
+	if user != nil {
+		// User-specific authentication flow
+		assertionData, sessionData, err = s.wa.BeginLogin(user, s.getAuthenticationOptions()...)
+	} else {
+		// Usernameless flow - no user specified, let the authenticator choose
+		assertionData, sessionData, err = s.wa.BeginDiscoverableLogin(s.getAuthenticationOptions()...)
+	}
+
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return sessionData, assertionData, nil
+}
+
+// FinishLogin verifies the credential assertion response and returns the credential with flags
+// This is called after the user completes the passkey authentication ceremony
+// The assertionResponse should be parsed via protocol.ParseCredentialRequestResponseBody
+func (s *WebAuthnService) FinishLogin(ctx context.Context, user webauthn.User, parsedResponse *protocol.ParsedCredentialAssertionData, sessionData *webauthn.SessionData) (*webauthn.Credential, error) {
+	// Verify the parsed assertion response against the session data
+	// Note: ValidateLogin expects sessionData as a value, not a pointer
+	credential, err := s.wa.ValidateLogin(user, *sessionData, parsedResponse)
+	if err != nil {
+		return nil, err
+	}
+	return credential, nil
+}
