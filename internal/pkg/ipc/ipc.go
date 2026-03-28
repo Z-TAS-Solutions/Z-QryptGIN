@@ -1,25 +1,14 @@
 package ipc
 
 import (
-	"context"
 	"log"
 	"net"
 	"os"
 	"runtime"
 
 	"github.com/Microsoft/go-winio"
-	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/pkg/zproto"
 	"google.golang.org/grpc"
 )
-
-type PingServer struct {
-	zproto.UnimplementedPingServiceServer
-}
-
-func (s *PingServer) Ping(ctx context.Context, in *zproto.PingRequest) (*zproto.PingResponse, error) {
-	log.Printf("Received via gRPC-IPC: %s", in.GetMessage())
-	return &zproto.PingResponse{Reply: "Z-Qrypt Hub Active"}, nil
-}
 
 func GetIPCListener() (net.Listener, error) {
 	if runtime.GOOS == "windows" {
@@ -32,8 +21,6 @@ func GetIPCListener() (net.Listener, error) {
 }
 
 func RunZIPCHub(grpcServer *grpc.Server) {
-
-	zproto.RegisterPingServiceServer(grpcServer, &PingServer{})
 
 	socketPath, error := GetIPCListener()
 	if error != nil {

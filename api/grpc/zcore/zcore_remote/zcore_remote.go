@@ -8,6 +8,7 @@ import (
 
 	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/pkg/zcoreproto"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/recovery"
 )
 
 type ZCoreHub struct {
@@ -33,11 +34,21 @@ func (s *ZCoreHub) Register(ctx context.Context, req *zcoreproto.RegisterRequest
 
 func RunZCoreRemote() {
 	listener, _ := net.Listen("tcp", ":50051")
-	zcoreprotoHub := grpc.NewServer()
+
+	opts := []grpc.ServerOption{
+		grpc.ChainUnaryInterceptor(
+			recovery.UnaryServerInterceptor(),
+		),
+	}
+
+	zcoreprotoHub := grpc.NewServer(opts...)
+
 	zcoreproto.RegisterZCoreServiceServer(zcoreprotoHub, &ZCoreHub{
 		nodes: make(map[string]string),
 	})
 	log.Println("Z-Qrypt GRPC Server Starting On :50051...")
 
-	zcoreprotoHub.Serve(listener)
+	if err := zcoreprotoHub.Serve(listener); err != nil {
+		log.Fatalf("[ZCoreHub] Server failed to serve: %v", err)
+	}
 }
