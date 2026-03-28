@@ -12,7 +12,7 @@ import (
 	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/pkg/zfusionproto"
 )
 
-func RunZFusionClient(ip string) (zfusionproto.FusionCaptureServiceClient, *grpc.ClientConn) {
+func RunZFusionClient(ip string) (zfusionproto.FusionCaptureServiceClient, error) {
 
 	var target string
 

@@ -67,11 +67,21 @@ func main() {
 	if err != nil {
 		log.Println("Cannot Connect To ZPiScanner: %v", err)
 	}
-	_, errr = zpi_client.InitializeZPiClient(zpiClient, 320)
+	_, err = zpi_client.InitializeZPiClient(zpiClient, 320)
+	if err != nil {
+		log.Println("Failed To Configure ZPiClient..")
+	}
+
 	tofEventStream, err := zpi_client.StartToFStream(zpiClient)
+	if err != nil {
+		log.Println("Failed To Start ToF Stream Trigger on ZPiClient..")
+	}
 
 	log.Println("Dialing ZFusionCore...")
-	zfusionClient, errrr := zfusion_client.RunZFusionClient("")
+	zfusionClient, err := zfusion_client.RunZFusionClient("")
+	if err != nil {
+		log.Println("Failed To Connect To ZFusion Core !")
+	}
 
 	func() {
 		for {
