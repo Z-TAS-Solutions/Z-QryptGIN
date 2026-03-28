@@ -12,8 +12,10 @@ import (
 func InitWebAuthn() (*webauthn.WebAuthn, error) {
 	config := &webauthn.Config{
 		RPDisplayName: "Z-QryptGIN", // Display Name for your site
-		RPID:          "api.z-tas.com",
-		RPOrigins:     []string{"https://z-tas.com"},
+		// RPID:          "api.z-tas.com",
+		RPID:          "localhost",
+		// RPOrigins:     []string{"https://z-tas.com"},
+		RPOrigins:     []string{"http://localhost:5173"},
 
 		// Registration Settings -> Attestation: Direct
 		AttestationPreference: protocol.PreferDirectAttestation,
@@ -91,4 +93,17 @@ func DeserializeSessionData(data []byte) (*webauthn.SessionData, error) {
 		return nil, err
 	}
 	return &sessionData, nil
+}
+
+// FinishRegistration verifies the credential creation response and returns the credential
+// This is called after the user completes the passkey registration ceremony
+// The credentialResponse should be parsed via protocol.ParseCredentialCreationResponseBody
+func (s *WebAuthnService) FinishRegistration(ctx context.Context, user webauthn.User, parsedResponse *protocol.ParsedCredentialCreationData, sessionData *webauthn.SessionData) (*webauthn.Credential, error) {
+	// Verify the parsed credential response against the session data
+	// Note: CreateCredential expects sessionData as a value, not a pointer
+	credential, err := s.wa.CreateCredential(user, *sessionData, parsedResponse)
+	if err != nil {
+		return nil, err
+	}
+	return credential, nil
 }

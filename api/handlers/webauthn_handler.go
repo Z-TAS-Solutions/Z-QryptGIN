@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/go-webauthn/webauthn/protocol"
 	"github.com/go-webauthn/webauthn/webauthn"
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
@@ -20,11 +21,13 @@ import (
 )
 
 type WebAuthnHandler struct {
-	logger       zerolog.Logger
-	webauthnSvc  *service.WebAuthnService
-	userRepo     repository.UserRepository
-	sessionCache *cache.WebAuthnSessionCache
-	redisClient  *redis.Client
+	logger                    zerolog.Logger
+	webauthnSvc              *service.WebAuthnService
+	userRepo                 repository.UserRepository
+	credentialRepo           repository.WebAuthnCredentialRepository
+	sessionCache             *cache.WebAuthnSessionCache
+	userRegistrationService  service.UserRegistrationService
+	redisClient              *redis.Client
 }
 
 // NewWebAuthnHandler creates a new WebAuthnHandler instance
@@ -41,6 +44,27 @@ func NewWebAuthnHandler(
 		userRepo:     userRepo,
 		sessionCache: sessionCache,
 		redisClient:  redisClient,
+	}
+}
+
+// NewWebAuthnHandlerWithRegistration creates a new WebAuthnHandler with user registration service support
+func NewWebAuthnHandlerWithRegistration(
+	logger zerolog.Logger,
+	webauthnSvc *service.WebAuthnService,
+	userRepo repository.UserRepository,
+	credentialRepo repository.WebAuthnCredentialRepository,
+	sessionCache *cache.WebAuthnSessionCache,
+	userRegistrationService service.UserRegistrationService,
+	redisClient *redis.Client,
+) *WebAuthnHandler {
+	return &WebAuthnHandler{
+		logger:                   logger,
+		webauthnSvc:             webauthnSvc,
+		userRepo:                userRepo,
+		credentialRepo:          credentialRepo,
+		sessionCache:            sessionCache,
+		userRegistrationService: userRegistrationService,
+		redisClient:             redisClient,
 	}
 }
 
@@ -143,6 +167,110 @@ func (h *WebAuthnHandler) RegisterBegin(c *gin.Context) {
 			CreationData: creationData,
 		},
 	})
+}
+
+// RegisterFinish completes the WebAuthn registration ceremony
+// POST /api/v1/webauthn/register/finish
+// Expects: X-Session-Token header + raw credential creation response in body
+func (h *WebAuthnHandler) RegisterFinish(c *gin.Context) {
+	// 1. Extract session token from header
+	sessionToken := c.GetHeader("X-Session-Token")
+	if sessionToken == "" {
+		h.logger.Warn().Msg("Missing X-Session-Token header")
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+			"status":  "error",
+			"code":    http.StatusBadRequest,
+			"message": "Missing X-Session-Token header",
+		})
+		return
+	}
+
+	// 2. Retrieve the session from cache
+	wrappedSession, err := h.sessionCache.GetRegistrationSession(c.Request.Context(), sessionToken)
+	if err != nil {
+		h.logger.Warn().Str("session_token", sessionToken).Err(err).Msg("Failed to retrieve registration session")
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+			"status":  "error",
+			"code":    http.StatusUnauthorized,
+			"message": "Session expired or invalid",
+		})
+		return
+	}
+
+	// 3. Parse the credential creation response from the request body
+	credentialResponse, err := protocol.ParseCredentialCreationResponseBody(c.Request.Body)
+	if err != nil {
+		h.logger.Error().Err(err).Str("session_token", sessionToken).Msg("Failed to parse credential creation response")
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+			"status":  "error",
+			"code":    http.StatusBadRequest,
+			"message": "Invalid credential response: " + err.Error(),
+		})
+		return
+	}
+
+	// 4. Call the registration service to finish registration
+	// The service will:
+	// - Verify the credential with the stored session data
+	// - Create the user in the database
+	// - Save the WebAuthn credential
+	// - Clean up the caches
+	err = h.getUserRegistrationService().FinishRegistration(
+		c.Request.Context(),
+		wrappedSession.UserID,
+		credentialResponse,
+		wrappedSession.SessionData,
+	)
+	if err != nil {
+		h.logger.Error().
+			Err(err).
+			Str("session_token", sessionToken).
+			Str("user_id", string(wrappedSession.UserID)).
+			Msg("Registration finish failed")
+
+		// Return appropriate error based on error type
+		if err.Error() == "registration entry not found" {
+			c.JSON(http.StatusNotFound, gin.H{
+				"status":  "error",
+				"code":    http.StatusNotFound,
+				"message": "Registration not found - please start over",
+			})
+			return
+		}
+
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status":  "error",
+			"code":    http.StatusInternalServerError,
+			"message": "Registration failed: " + err.Error(),
+		})
+		return
+	}
+
+	// 5. Delete the session from cache after successful registration
+	_ = h.sessionCache.DeleteRegistrationSession(c.Request.Context(), sessionToken)
+
+	h.logger.Info().
+		Str("session_token", sessionToken).
+		Str("user_id", string(wrappedSession.UserID)).
+		Msg("User successfully registered with WebAuthn credential")
+
+	// 6. Return success response
+	c.JSON(http.StatusCreated, gin.H{
+		"status":  "success",
+		"code":    http.StatusCreated,
+		"message": "Registration completed successfully",
+		"data": gin.H{
+			"user_id": string(wrappedSession.UserID),
+		},
+	})
+}
+
+// getUserRegistrationService is a helper to get the registration service
+// This would normally be injected, but for now we use a pattern to access it
+func (h *WebAuthnHandler) getUserRegistrationService() service.UserRegistrationService {
+	// This is a placeholder - in the actual implementation, it should be injected in NewWebAuthnHandler
+	// For now, we'll need to make sure this is available
+	return h.userRegistrationService
 }
 
 // getRegistrationCacheByEmail retrieves user registration data from Redis cache by email

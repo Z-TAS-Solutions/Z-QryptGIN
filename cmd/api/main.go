@@ -61,12 +61,12 @@ func main() {
 	fmt.Println("Initializing Repositories...")
 	// 6. Initialize Repositories
 	userRepo := repository.NewUserRepository(db)
+	credentialRepo := repository.NewWebAuthnCredentialRepository(db)
 	// sessionRepo := repository.NewSessionRepository(redisClient)
 
 	fmt.Println("Initializing Services...")
 	// 7. Initialize Services
 	// userSvc := service.NewUserService(userRepo, sessionRepo, emailSvc)
-	userRegistrationSvc := service.NewUserRegistrationService(userRepo, redisClient, emailSvc)
 
 	fmt.Println("Initializing WebAuthn...")
 	// 7.5 Initialize WebAuthn for Passkey Registration/Authentication
@@ -77,11 +77,14 @@ func main() {
 	webauthnSvc := service.NewWebAuthnService(wa)
 	webauthnSessionCache := cache.NewWebAuthnSessionCache(redisClient)
 
+	// Create user registration service with WebAuthn support for complete registration flow
+	userRegistrationSvc := service.NewUserRegistrationServiceWithWebAuthn(userRepo, credentialRepo, redisClient, emailSvc, webauthnSvc, db)
+
 	fmt.Println("Initializing Handlers...")
 	// 8. Initialize Handlers
 	// userHandler := handlers.NewUserHandler(userSvc)
 	userRegistrationHandler := handlers.NewUserRegistrationHandler(userRegistrationSvc)
-	webauthnHandler := handlers.NewWebAuthnHandler(logger, webauthnSvc, userRepo, webauthnSessionCache, redisClient)
+	webauthnHandler := handlers.NewWebAuthnHandlerWithRegistration(logger, webauthnSvc, userRepo, credentialRepo, webauthnSessionCache, userRegistrationSvc, redisClient)
 
 	fmt.Println("Setting up Gin Router...")
 	// 9. Setup Gin Router
@@ -103,7 +106,7 @@ func main() {
 	{
 		// Passkey Registration Endpoints
 		webauthn.POST("/register/begin", webauthnHandler.RegisterBegin)
-		// webauthn.POST("/register/finish", webauthnHandler.RegisterFinish)
+		webauthn.POST("/register/finish", webauthnHandler.RegisterFinish)
 
 		// Passkey Authentication Endpoints
 		// webauthn.POST("/login/begin", webauthnHandler.LoginBegin)
