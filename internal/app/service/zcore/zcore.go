@@ -8,17 +8,31 @@ import (
 	"time"
 
 	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/app/service/zpi_client"
-
 	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/pkg/ipc"
+	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/pkg/zcoreproto"
 	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/pkg/zfusionproto"
 	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/pkg/zscanproto"
 )
+
+type EventType int
+
+const (
+	ZPiTrigger EventType = iota
+	ZHubTrigger
+)
+
+type ZEvent struct {
+	Type    EventType
+	Payload interface{}
+}
 
 type ZCoreService struct {
 	ZIPCClient *ipc.ZPIPCClient
 	ZPiClient  zscanproto.ZPiControllerClient
 	ZFusion    zfusionproto.FusionCaptureServiceClient
+	ZCoreHub   zcoreproto.ZCoreServiceClient
 
+	EventChannel chan ZEvent
 	sessionCount int
 }
 
@@ -102,13 +116,13 @@ func (z *ZCoreService) ZCoreEngine() {
 	tofEventStream, _ := zpi_client.StartToFStream(z.ZPiClient)
 
 	for {
-		evt, err := tofEventStream.Recv()
+		tofEvent, err := tofEventStream.Recv()
 		if err != nil {
 			log.Println("ToF Stream lost:", err)
 			return
 		}
 
-		if evt.Type == zscanproto.ToFEvent_TRIGGER {
+		if tofEvent.Type == zscanproto.ToFEvent_TRIGGER {
 			log.Println("[ZCore] ToF trigger received!")
 			go z.HandleFusionSession(tofEventStream)
 		}

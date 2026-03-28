@@ -8,35 +8,49 @@ import (
 
 	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/pkg/zcoreproto"
 
+	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/app/service/zcore"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
 
 type ZCoreNode struct {
 	zcoreproto.UnimplementedZCoreServiceServer
+	EventChannel chan zcore.ZEvent
 }
 
 func (s *ZCoreNode) Ping(ctx context.Context, req *zcoreproto.PingRequest) (*zcoreproto.PingResponse, error) {
 	log.Printf("Node received Ping from Hub: %s", req.Message)
-	return &zcoreproto.PingResponse{Reply: "Peer is active!"}, nil
+	return &zcoreproto.PingResponse{Reply: "Node is active!"}, nil
 }
 
-func RunZCoreNode(nodeAddr string) {
-	go func() {
+func RunZCoreNode(nodeAddr string, eventChannel chan zcore.ZEvent) {
+	for {
+		log.Println("[ZCoreNodeManager] Starting ZCore gRPC Server...")
+
 		zlistener, err := net.Listen("tcp", nodeAddr)
 		if err != nil {
 			log.Printf("[ZCoreNode] Failed to listen: %v", err)
-			return
+			time.Sleep(3 * time.Second)
+			continue
 		}
 
-		s := grpc.NewServer()
-		zcoreproto.RegisterZCoreServiceServer(s, &ZCoreNode{})
+		nodeServer := grpc.NewServer()
+		zcoreproto.RegisterZCoreServiceServer(nodeServer, &ZCoreNode{EventChannel: eventChannel})
 
 		log.Printf("[ZCoreNode] Node Server listening on %s", nodeAddr)
-		if err := s.Serve(zlistener); err != nil {
+		if err := nodeServer.Serve(zlistener); err != nil {
 			log.Printf("[ZCoreNode] Server exited: %v", err)
 		}
-	}()
+
+		if err != nil {
+			log.Printf("[ZCoreNodeManager] Server crashed: %v. Restarting in 3s...", err)
+			time.Sleep(3 * time.Second)
+			continue
+		}
+
+		log.Println("[ZCoreNodeManager] Server shutting down...")
+		break
+	}
 }
 
 func ConnectZCoreHub(nodeID, nodeAddr, hubAddr string, retry bool) (zcoreproto.ZCoreServiceClient, error) {
@@ -52,17 +66,17 @@ func ConnectZCoreHub(nodeID, nodeAddr, hubAddr string, retry bool) (zcoreproto.Z
 			})
 
 			if err == nil {
-				log.Println("[ZCoreNode] Successfully registered with Hub!")
+				log.Println("[ZCoreNode] Successfully registered with ZCoreHub!")
 				return remoteNode, nil
 			}
 		}
 
 		if !retry {
-			log.Fatalf("[ZCoreNode] Failed to connect and retry is disabled: %v", err)
+			log.Fatalf("[ZCoreNode] Failed to connect to ZCoreHub and retry is disabled: %v", err)
 			return nil, err
 		}
 
-		log.Printf("[ZCoreNode] Hub unreachable. Retrying in 5s...")
+		log.Printf("[ZCoreNode] ZCoreHub unreachable. Retrying in 5s...")
 		time.Sleep(5 * time.Second)
 	}
 }

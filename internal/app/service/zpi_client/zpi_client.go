@@ -17,7 +17,7 @@ func RunZPiClient(ip string) (zscanproto.ZPiControllerClient, error) {
 
 	zPiConn, err := grpc.DialContext(ctx, ip,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
-		grpc.WithBlock(), // Wait until connection is ready
+		grpc.WithBlock(),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to gRPC host at %s: %w", ip, err)

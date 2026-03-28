@@ -2,8 +2,8 @@ package main
 
 import (
 	"log"
-	"net"
 
+	"github.com/Z-TAS-Solutions/Z-QryptGIN/api/grpc/zcore/zcore_node"
 	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/app/service/zcore"
 	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/app/service/zfusion_client"
 	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/app/service/zpi_client"
@@ -11,42 +11,21 @@ import (
 	"google.golang.org/grpc"
 )
 
-func RunLocalGRPC(compute bool) {
+func RunZCoreWHub() {
 
-	grpcServer := grpc.NewServer()
+	nodeID := "ZTAS@0001"
+	nodeAddr := "localhost:50052"
+	hubAddr := "localhost:50051"
 
-	if compute {
-		ipc.RunZIPCHub(grpcServer)
+	eventQueue := make(chan zcore.ZEvent, 200)
+
+	log.Println("Dialing Remote ZCoreHub...")
+	zCoreHubClient, err := zcore_node.ConnectZCoreHub(nodeID, nodeAddr, hubAddr, true)
+	if err != nil {
+		log.Println("Cannot Connect to Remote ZCoreHub: %v", err)
 	}
 
-	localServer, error := net.Listen("tcp", ":50051")
-	if error != nil {
-		log.Fatalf("failed to listen: %v", error)
-	}
-
-	grpcServer.Serve(localServer)
-
-}
-
-func RunRemoteGRPC(compute bool, remoteAddr string) {
-	if !compute && remoteAddr == "" {
-		log.Fatal("invalid config: no compute available")
-	}
-
-	grpcServer := grpc.NewServer()
-
-	if compute {
-		ipc.RunZIPCHub(grpcServer)
-	}
-
-	//localServer, err := grpc.Dial(remoteAddr, grpc.WithInsecure())
-	//if err != nil {
-	//	log.Fatalf("failed to dial remote: %v", err)
-	//}
-
-}
-
-func main() {
+	zcore_node.RunZCoreNode(nodeAddr, eventQueue)
 
 	log.Println("Dialing ZIPC Crypt Core...")
 	zipcClient, err := ipc.DialIPC()
@@ -75,8 +54,31 @@ func main() {
 		ZIPCClient: zipcClient,
 		ZPiClient:  zpiClient,
 		ZFusion:    zfusionClient,
+		ZCoreHub:   zCoreHubClient,
 	}
 
 	ZCoreService.ZCoreEngine()
+
+}
+
+func RunRemoteGRPC(compute bool, remoteAddr string) {
+	if !compute && remoteAddr == "" {
+		log.Fatal("invalid config: no compute available")
+	}
+
+	grpcServer := grpc.NewServer()
+
+	if compute {
+		ipc.RunZIPCHub(grpcServer)
+	}
+
+	//localServer, err := grpc.Dial(remoteAddr, grpc.WithInsecure())
+	//if err != nil {
+	//	log.Fatalf("failed to dial remote: %v", err)
+	//}
+
+}
+
+func main() {
 
 }
