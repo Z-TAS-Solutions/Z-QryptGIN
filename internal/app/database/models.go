@@ -21,7 +21,6 @@ type User struct {
 	SecurityLevel UserSecurityLevel `gorm:"default:Low"`
 	MFAStatus     bool
 	//Relationships
-	Passkeys       []Passkey            `gorm:"foreignKey:UserID"`
 	Notifications  []Notification       `gorm:"foreignKey:UserID"`
 	MfaChallenges  []MfaChallenge       `gorm:"foreignKey:UserID"`
 	ActivityLogs   []ActivityLog        `gorm:"foreignKey:UserID"`

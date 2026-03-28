@@ -84,6 +84,8 @@ func main() {
 	{
 		// v1.POST("/users/RegisterUser", userHandler.Register)
 		v1.POST("/users/register/new", userRegistrationHandler.Register)
+		v1.POST("/users/register/verifyOTP", userRegistrationHandler.VerifyOTP)
+		v1.POST("/users/register/resendOTP", userRegistrationHandler.ResendOTP)
 	}
 
 	fmt.Println("Starting the server...")

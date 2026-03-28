@@ -40,3 +40,57 @@ func (h *UserRegistrationHandler) Register(c *gin.Context) {
 
 	c.JSON(http.StatusCreated, gin.H{"status": "success", "data": resp})
 }
+
+func (h *UserRegistrationHandler) VerifyOTP(c *gin.Context) {
+	var req dto.UserRegistrationOTPRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+			"status":  "error",
+			"code":    http.StatusBadRequest,
+			"message": "invalid JSON payload: " + err.Error(),
+		})
+		return
+	}
+
+	resp, err := h.svc.VerifyOTP(c.Request.Context(), req)
+	if err != nil {
+		if err == service.ErrRegistrationNotFound {
+			c.JSON(http.StatusNotFound, gin.H{"status": "error", "message": "registration info not found or expired"})
+			return
+		}
+		if err == service.ErrInvalidOTP {
+			c.JSON(http.StatusUnauthorized, gin.H{"status": "error", "message": "invalid otp"})
+			return
+		}
+
+		c.Error(err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"status": "success", "data": resp})
+}
+
+func (h *UserRegistrationHandler) ResendOTP(c *gin.Context) {
+	var req dto.ResendOTPRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+			"status":  "error",
+			"code":    http.StatusBadRequest,
+			"message": "invalid JSON payload: " + err.Error(),
+		})
+		return
+	}
+
+	resp, err := h.svc.ResendOTP(c.Request.Context(), req)
+	if err != nil {
+		c.Error(err)
+		return
+	}
+
+	if !resp.Success {
+		c.JSON(http.StatusTooManyRequests, gin.H{"status": "error", "message": resp.Message})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"status": "success", "message": resp.Message})
+}
