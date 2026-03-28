@@ -12,9 +12,19 @@ import (
 	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/app/service/zpi_client"
 	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/pkg/ipc"
 	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/pkg/zfusionproto"
+	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/pkg/zproto"
 	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/pkg/zscanproto"
 	"google.golang.org/grpc"
 )
+
+type PingServer struct {
+	zproto.UnimplementedPingServiceServer
+}
+
+func (s *PingServer) Ping(ctx context.Context, in *zproto.PingRequest) (*zproto.PingResponse, error) {
+	log.Printf("Received via gRPC-IPC: %s", in.GetMessage())
+	return &zproto.PingResponse{Reply: "Z-Qrypt Hub Active"}, nil
+}
 
 func RunLocalGRPC(compute bool) {
 
@@ -110,13 +120,15 @@ func main() {
 				for {
 					zfusionResponse, err := zFusionStream.Recv()
 					if err == io.EOF {
-						log.Println("[ZFusion] Hardware closed session normally.")
+						log.Println("[ZFusion] Session Closed.")
 						break
 					}
 					if err != nil {
 						log.Printf("[Error] Fusion Stream interrupted: %v", err)
 						break
 					}
+
+					log.Println("[ZFusion] Fusion :", zfusionResponse.StatusMessage)
 
 					switch zfusionResponse.CompletionPhase {
 					case zfusionproto.ZFusionResponse_PHASE_ROI:
@@ -127,7 +139,7 @@ func main() {
 						log.Println("[ZFusion] Fusion Phase: Extracting Bitstream...")
 
 						if zfusionResponse.StatusMessage == "ROI_FAIL" {
-							log.Println("[Warning] Hardware failed to lock ROI.")
+							log.Println("[Warning] Failed to lock ROI.")
 							break
 						}
 
