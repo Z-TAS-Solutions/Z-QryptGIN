@@ -7,6 +7,7 @@ import (
 
 type UserRepository interface {
 	Create(user *database.User) error
+	FindByID(id uint) (*database.User, error)
 	FindByEmail(email string) (*database.User, error)
 	FindByPhoneNo(phone string) (*database.User, error)
 	FindByNic(nic string) (*database.User, error)
@@ -23,6 +24,12 @@ func NewUserRepository(db *gorm.DB) UserRepository {
 
 func (r *userRepository) Create(user *database.User) error {
 	return r.db.Create(user).Error
+}
+
+func (r *userRepository) FindByID(id uint) (*database.User, error) {
+	var user database.User
+	err := r.db.Where("id = ?", id).First(&user).Error
+	return &user, err
 }
 
 func (r *userRepository) FindByEmail(email string) (*database.User, error) {

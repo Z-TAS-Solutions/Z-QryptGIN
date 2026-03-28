@@ -256,7 +256,7 @@ func (h *WebAuthnHandler) RegisterFinish(c *gin.Context) {
 	_ = h.sessionCache.DeleteRegistrationSession(c.Request.Context(), sessionToken)
 
 	// 6. Load the newly created user from database
-	registeredUser, err := h.userRepo.FindByCustomID(wrappedSession.UserID)
+	registeredUser, err := h.userRepo.FindByCustomID(string(wrappedSession.UserID))
 	if err != nil {
 		h.logger.Error().Err(err).Str("user_id", string(wrappedSession.UserID)).Msg("Failed to load registered user")
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -465,10 +465,10 @@ func (h *WebAuthnHandler) LoginFinish(c *gin.Context) {
 		return
 	}
 
-	// 5. Load the user from the database
-	authenticatedUser, err := h.userRepo.FindByCustomID(credential.UserID)
+	// 5. Load the user from the database by ID
+	authenticatedUser, err := h.userRepo.FindByID(credential.UserID)
 	if err != nil {
-		h.logger.Error().Err(err).Str("user_id", string(credential.UserID)).Msg("Failed to load user for authentication")
+		h.logger.Error().Err(err).Uint("user_id", credential.UserID).Msg("Failed to load user for authentication")
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"status":  "error",
 			"code":    http.StatusInternalServerError,
@@ -491,7 +491,7 @@ func (h *WebAuthnHandler) LoginFinish(c *gin.Context) {
 
 	// 7. Create webauthn.User interface for verification
 	webauthnUser := &cache.PendingUser{
-		ID:          authenticatedUser.ID,
+		ID:          authenticatedUser.CustomID,
 		Email:       authenticatedUser.Email,
 		Name:        authenticatedUser.Name,
 		Credentials: credentialsToWebAuthnCredentials(credentials),
@@ -510,11 +510,11 @@ func (h *WebAuthnHandler) LoginFinish(c *gin.Context) {
 	}
 
 	// 9. Check for cloned credentials (sign count anomaly)
-	if userData.SignCount < credential.SignCount {
+	if userData.Sign < credential.SignCount {
 		h.logger.Warn().
-			Str("user_id", string(authenticatedUser.ID)).
+			Uint("user_id", authenticatedUser.ID).
 			Uint32("stored_sign_count", credential.SignCount).
-			Uint32("new_sign_count", userData.SignCount).
+			Uint32("new_sign_count", userData.Sign).
 			Msg("Potential cloned credential detected")
 		_ = h.credentialRepo.UpdateCloneWarning(credentialID, true)
 		c.JSON(http.StatusUnauthorized, gin.H{
@@ -526,7 +526,7 @@ func (h *WebAuthnHandler) LoginFinish(c *gin.Context) {
 	}
 
 	// 10. Update the sign count for this credential
-	err = h.credentialRepo.UpdateSignCount(credentialID, userData.SignCount)
+	err = h.credentialRepo.UpdateSignCount(credentialID, userData.Sign)
 	if err != nil {
 		h.logger.Error().Err(err).Msg("Failed to update credential sign count")
 		// Non-fatal, continue with login
@@ -534,11 +534,16 @@ func (h *WebAuthnHandler) LoginFinish(c *gin.Context) {
 
 	// 11. Create session object for Redis session tracking
 	// This is the key component of the hybrid approach
+	deviceID := string(credential.AuthenticatorName)
+	if deviceID == "" {
+		// Use credential ID hex representation as device identifier
+		deviceID = fmt.Sprintf("device-%d", credential.ID)
+	}
 	sessionInfo := &dto.Session{
 		ID:           uuid.New().String(),
 		UserID:       authenticatedUser.ID,
 		DeviceName:   c.GetHeader("User-Agent"), // User-Agent as device identifier
-		DeviceID:     assertionResponse.ID.String(),
+		DeviceID:     deviceID,
 		IPAddress:    c.ClientIP(),
 		UserAgent:    c.GetHeader("User-Agent"),
 		IsActive:     true,
@@ -623,11 +628,14 @@ func generateSessionToken() string {
 func credentialsToWebAuthnCredentials(dbCredentials []database.WebAuthnCredential) []webauthn.Credential {
 	var waCredentials []webauthn.Credential
 	for _, dbCred := range dbCredentials {
+		transports := []string{}
+		if len(dbCred.Transport) > 0 {
+			transports = dbCred.Transport
+		}
 		waCredentials = append(waCredentials, webauthn.Credential{
-			ID:         dbCred.CredentialID,
-			PublicKey:  dbCred.PublicKey,
-			Sign:       dbCred.SignCount,
-			Transports: []string{}, // Transports if available from database
+			ID:        dbCred.CredentialID,
+			PublicKey: dbCred.PublicKey,
+			Sign:      dbCred.SignCount,
 		})
 	}
 	return waCredentials
