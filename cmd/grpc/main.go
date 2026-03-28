@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"sync"
 
 	"github.com/Z-TAS-Solutions/Z-QryptGIN/api/grpc/zcore/zcore_node"
 	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/app/service/zcore"
@@ -11,6 +12,67 @@ import (
 	"google.golang.org/grpc"
 )
 
+func RunZClientHandler(ZCoreService *zcore.ZCoreService, nodeID, nodeAddr, hubAddr string) {
+	var wg sync.WaitGroup
+
+	wg.Add(4)
+
+	go func() {
+		defer wg.Done()
+
+		log.Println("Dialing ZPiScanner...")
+		zpiClient, err := zpi_client.RunZPiClient("192.168.1.229:50051")
+		if err != nil {
+			log.Println("Cannot Connect To ZPiScanner: %v", err)
+		}
+		_, err = zpi_client.InitializeZPiClient(zpiClient, 320)
+		if err != nil {
+			log.Println("Failed To Configure ZPiClient..")
+		}
+
+		ZCoreService.ZPiClient = zpiClient
+
+	}()
+
+	go func() {
+		defer wg.Done()
+
+		log.Println("Dialing ZFusionCore...")
+		zfusionClient, err := zfusion_client.RunZFusionClient("")
+		if err != nil {
+			log.Println("Failed To Connect To ZFusion Core !")
+		}
+		ZCoreService.ZFusion = zfusionClient
+
+	}()
+
+	go func() {
+		defer wg.Done()
+
+		log.Println("Dialing ZIPC Crypt Core...")
+		zIPCClient, err := ipc.RunZIPCClient()
+		if err != nil {
+			log.Println("Cannot Connect To ZIPC Crypt Core : %v", err)
+		}
+
+		ZCoreService.ZIPCClient = zIPCClient
+
+	}()
+
+	go func() {
+
+		log.Println("Dialing Remote ZCoreHub...")
+		zCoreHubClient, err := zcore_node.ConnectZCoreHub(nodeID, nodeAddr, hubAddr, true)
+		if err != nil {
+			log.Println("Cannot Connect to Remote ZCoreHub: %v", err)
+		}
+
+		ZCoreService.ZCoreHub = zCoreHubClient
+
+	}()
+
+}
+
 func RunZCoreWHub() {
 
 	nodeID := "ZTAS@0001"
@@ -19,43 +81,11 @@ func RunZCoreWHub() {
 
 	eventQueue := make(chan zcore.ZEvent, 200)
 
-	log.Println("Dialing Remote ZCoreHub...")
-	zCoreHubClient, err := zcore_node.ConnectZCoreHub(nodeID, nodeAddr, hubAddr, true)
-	if err != nil {
-		log.Println("Cannot Connect to Remote ZCoreHub: %v", err)
-	}
+	go zcore_node.RunZCoreNode(nodeAddr, eventQueue)
 
-	zcore_node.RunZCoreNode(nodeAddr, eventQueue)
+	ZCoreService := &zcore.ZCoreService{}
 
-	log.Println("Dialing ZIPC Crypt Core...")
-	zipcClient, err := ipc.DialIPC()
-	if err != nil {
-		log.Println("Cannot initialize IPC dialer: %v", err)
-	}
-	defer zipcClient.Close()
-
-	log.Println("Dialing ZPiScanner...")
-	zpiClient, err := zpi_client.RunZPiClient("192.168.1.229:50051")
-	if err != nil {
-		log.Println("Cannot Connect To ZPiScanner: %v", err)
-	}
-	_, err = zpi_client.InitializeZPiClient(zpiClient, 320)
-	if err != nil {
-		log.Println("Failed To Configure ZPiClient..")
-	}
-
-	log.Println("Dialing ZFusionCore...")
-	zfusionClient, err := zfusion_client.RunZFusionClient("")
-	if err != nil {
-		log.Println("Failed To Connect To ZFusion Core !")
-	}
-
-	ZCoreService := &zcore.ZCoreService{
-		ZIPCClient: zipcClient,
-		ZPiClient:  zpiClient,
-		ZFusion:    zfusionClient,
-		ZCoreHub:   zCoreHubClient,
-	}
+	RunZClientHandler(ZCoreService, nodeID, nodeAddr, hubAddr)
 
 	ZCoreService.ZCoreEngine()
 

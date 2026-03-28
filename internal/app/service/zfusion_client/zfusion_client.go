@@ -13,7 +13,6 @@ import (
 )
 
 func RunZFusionClient(ip string) (zfusionproto.FusionCaptureServiceClient, error) {
-
 	var target string
 
 	if ip != "" {
@@ -26,25 +25,27 @@ func RunZFusionClient(ip string) (zfusionproto.FusionCaptureServiceClient, error
 		}
 	}
 
-	log.Printf("[ZTAS] Dialing ZFusionCore via %s (%s detected)...", target, runtime.GOOS)
+	log.Printf("[ZTAS] Attempting to connect to ZFusionCore via %s (%s detected)...", target, runtime.GOOS)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
+	for {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 
-	zFusionConn, err := grpc.DialContext(ctx, target,
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-		grpc.WithBlock(),
-	)
+		zFusionConn, err := grpc.DialContext(ctx, target,
+			grpc.WithTransportCredentials(insecure.NewCredentials()),
+			grpc.WithBlock(),
+		)
 
-	if err != nil {
-		log.Fatalf("[FusionClient] Failed to connect to FusionEngine at %s: %v", target, err)
+		if err != nil {
+			log.Printf("[FusionClient] Connection failed: %v. Retrying in 7 seconds...", err)
+			cancel()
+			time.Sleep(2 * time.Second)
+			continue
+		}
+
+		cancel()
+		log.Printf("[FusionClient] Successfully connected to ZCrypt-FusionEngine at %s", target)
+
+		zFusionClient := zfusionproto.NewFusionCaptureServiceClient(zFusionConn)
+		return zFusionClient, nil
 	}
-
-	log.Printf("[FusionClient] Successfully connected to ZCrypt-FusionEngine at %s", target)
-
-	zFusionClient := zfusionproto.NewFusionCaptureServiceClient(zFusionConn)
-	log.Printf("Connected to ZFusion GRPC Host: %s", target)
-
-	return zFusionClient, nil
-
 }

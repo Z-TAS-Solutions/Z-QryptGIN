@@ -12,21 +12,29 @@ import (
 )
 
 func RunZPiClient(ip string) (zscanproto.ZPiControllerClient, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
+	log.Printf("[ZPi] Attempting to connect to ZPi Controller at %s...", ip)
 
-	zPiConn, err := grpc.DialContext(ctx, ip,
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-		grpc.WithBlock(),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to connect to gRPC host at %s: %w", ip, err)
+	for {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+
+		zPiConn, err := grpc.DialContext(ctx, ip,
+			grpc.WithTransportCredentials(insecure.NewCredentials()),
+			grpc.WithBlock(),
+		)
+
+		if err != nil {
+			log.Printf("[ZPi] Failed to connect to %s: %v. Retrying in 7 seconds...", ip, err)
+			cancel()
+			time.Sleep(2 * time.Second)
+			continue
+		}
+
+		cancel()
+		log.Printf("[ZPi] Successfully connected to ZPi GRPC Host: %s", ip)
+
+		zPiClient := zscanproto.NewZPiControllerClient(zPiConn)
+		return zPiClient, nil
 	}
-
-	zPiClient := zscanproto.NewZPiControllerClient(zPiConn)
-	log.Printf("Connected to ZPi GRPC Host: %s", ip)
-
-	return zPiClient, nil
 }
 
 func InitializeZPiClient(zPiClient zscanproto.ZPiControllerClient, threshold uint32) (*zscanproto.Status, error) {
