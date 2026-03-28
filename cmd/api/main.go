@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"crypto/ed25519"
+	"crypto/rand"
 	"fmt"
 	"os"
 
@@ -80,11 +82,23 @@ func main() {
 	// Create user registration service with WebAuthn support for complete registration flow
 	userRegistrationSvc := service.NewUserRegistrationServiceWithWebAuthn(userRepo, credentialRepo, redisClient, emailSvc, webauthnSvc, db)
 
+	fmt.Println("Initializing JWT Service...")
+	// 7.6 Initialize JWT Service with EdDSA signing (hybrid stateless + stateful via Redis)
+	// Generate EdDSA keys for token signing
+	publicKey, privateKey, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		logger.Fatal().Err(err).Msg("Failed to generate EdDSA keys for JWT signing")
+	}
+
+	// Initialize JWT Service with Redis for session tracking
+	jwtService := service.NewJWTService(privateKey, publicKey, "Z-QryptGIN", redisClient)
+	logger.Info().Msg("JWT Service initialized with EdDSA algorithm and Redis session tracking (Hybrid Approach)")
+
 	fmt.Println("Initializing Handlers...")
 	// 8. Initialize Handlers
 	// userHandler := handlers.NewUserHandler(userSvc)
 	userRegistrationHandler := handlers.NewUserRegistrationHandler(userRegistrationSvc)
-	webauthnHandler := handlers.NewWebAuthnHandlerWithRegistration(logger, webauthnSvc, userRepo, credentialRepo, webauthnSessionCache, userRegistrationSvc, redisClient)
+	webauthnHandler := handlers.NewWebAuthnHandlerWithRegistration(logger, webauthnSvc, userRepo, credentialRepo, webauthnSessionCache, userRegistrationSvc, redisClient, jwtService)
 
 	fmt.Println("Setting up Gin Router...")
 	// 9. Setup Gin Router
@@ -109,8 +123,8 @@ func main() {
 		webauthn.POST("/register/finish", webauthnHandler.RegisterFinish)
 
 		// Passkey Authentication Endpoints
-		// webauthn.POST("/login/begin", webauthnHandler.LoginBegin)
-		// webauthn.POST("/login/finish", webauthnHandler.LoginFinish)
+		webauthn.POST("/login/begin", webauthnHandler.LoginBegin)
+		webauthn.POST("/login/finish", webauthnHandler.LoginFinish)
 	}
 
 	fmt.Println("Starting the server...")
