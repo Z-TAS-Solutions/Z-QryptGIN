@@ -83,7 +83,9 @@ func main() {
 	v1 := router.Group("/api/v1/admin")
 	{
 		// v1.POST("/users/RegisterUser", userHandler.Register)
-		v1.POST("/users/Register", userRegistrationHandler.Register)
+		v1.POST("/users/register/new", userRegistrationHandler.Register)
+		v1.POST("/users/register/verifyOTP", userRegistrationHandler.VerifyOTP)
+		v1.POST("/users/register/resendOTP", userRegistrationHandler.ResendOTP)
 	}
 
 	fmt.Println("Starting the server...")

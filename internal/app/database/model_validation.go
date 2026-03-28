@@ -28,6 +28,12 @@ var (
 	ErrInvalidTemplateID     = errors.New("template ID cannot be empty")
 	ErrInvalidNonce          = errors.New("invalid nonce length (expected 12 bytes)")
 	ErrInvalidCrypticData    = errors.New("cryptic data (DEK/Ciphertext) cannot be empty")
+	ErrInvalidCredentialID   = errors.New("credential ID cannot be empty")
+	ErrInvalidPublicKey      = errors.New("public key cannot be empty")
+	ErrInvalidAttestationType = errors.New("invalid attestation type")
+	ErrInvalidTransport      = errors.New("transport data cannot be empty")
+	ErrInvalidAAGUID         = errors.New("invalid AAGUID length (expected 16 bytes)")
+	ErrInvalidAuthenticatorName = errors.New("authenticator name cannot be empty or too long (max 100 chars)")
 )
 
 // --- Regex Pre-compilation ---
@@ -43,6 +49,7 @@ var (
 	passkeyIDRegex      = regexp.MustCompile(`^PassK-[a-zA-Z0-9]{8}$`)
 	sessionIDRegex      = regexp.MustCompile(`^SESS-[a-zA-Z0-9]{8}$`)
 	nicRegex            = regexp.MustCompile(`^([0-9]{9}[vVxX]|[0-9]{12})$`)
+	attestationTypeRegex = regexp.MustCompile(`^[a-z0-9\-]+$`)
 )
 
 // --- String-Based Custom Types ---
@@ -289,4 +296,71 @@ func (ur UserRole) Validate() error {
 		return nil
 	}
 	return ErrInvalidRole
+}
+
+// --- WebAuthnCredential Custom Types ---
+
+type CredentialID []byte
+
+func (ci CredentialID) Validate() error {
+	if len(ci) == 0 {
+		return ErrInvalidCredentialID
+	}
+	return nil
+}
+
+type WebAuthnPublicKey []byte
+
+func (pk WebAuthnPublicKey) Validate() error {
+	if len(pk) == 0 {
+		return ErrInvalidPublicKey
+	}
+	return nil
+}
+
+type AttestationType string
+
+const (
+	AttestationNone   AttestationType = "none"
+	AttestationFidoU2F AttestationType = "fido-u2f"
+	AttestationPacked  AttestationType = "packed"
+	AttestationAndroidKey AttestationType = "android-key"
+	AttestationAndroidSafetyNet AttestationType = "android-safetynet"
+	AttestationTPM AttestationType = "tpm"
+	AttestationAppleAnonymousCA AttestationType = "apple-anonymous-ca"
+)
+
+func (at AttestationType) Validate() error {
+	switch at {
+	case AttestationNone, AttestationFidoU2F, AttestationPacked, AttestationAndroidKey, AttestationAndroidSafetyNet, AttestationTPM, AttestationAppleAnonymousCA, "":
+		return nil
+	}
+	return ErrInvalidAttestationType
+}
+
+type WebAuthnTransport []byte
+
+func (t WebAuthnTransport) Validate() error {
+	if len(t) == 0 {
+		return ErrInvalidTransport
+	}
+	return nil
+}
+
+type AAGUID []byte
+
+func (a AAGUID) Validate() error {
+	if len(a) != 16 && len(a) != 0 {  // Allow 0 for optional, 16 for valid UUID
+		return ErrInvalidAAGUID
+	}
+	return nil
+}
+
+type AuthenticatorName string
+
+func (an AuthenticatorName) Validate() error {
+	if len(an) == 0 || len(an) > 100 {
+		return ErrInvalidAuthenticatorName
+	}
+	return nil
 }
