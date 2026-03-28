@@ -71,6 +71,10 @@ func RunZClientHandler(ZCoreService *zcore.ZCoreService, nodeID, nodeAddr, hubAd
 
 	}()
 
+	log.Println("Awaiting All Autobots...")
+	wg.Wait()
+	log.Println("All services connected!")
+
 }
 
 func RunZCoreWHub() {
@@ -110,5 +114,5 @@ func RunRemoteGRPC(compute bool, remoteAddr string) {
 }
 
 func main() {
-
+	RunZCoreWHub()
 }
