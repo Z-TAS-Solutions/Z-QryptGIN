@@ -68,10 +68,20 @@ func main() {
 	// userSvc := service.NewUserService(userRepo, sessionRepo, emailSvc)
 	userRegistrationSvc := service.NewUserRegistrationService(userRepo, redisClient, emailSvc)
 
+	fmt.Println("Initializing WebAuthn...")
+	// 7.5 Initialize WebAuthn for Passkey Registration/Authentication
+	wa, err := service.InitWebAuthn()
+	if err != nil {
+		logger.Fatal().Err(err).Msg("Failed to initialize WebAuthn")
+	}
+	webauthnSvc := service.NewWebAuthnService(wa)
+	webauthnSessionCache := cache.NewWebAuthnSessionCache(redisClient)
+
 	fmt.Println("Initializing Handlers...")
 	// 8. Initialize Handlers
 	// userHandler := handlers.NewUserHandler(userSvc)
 	userRegistrationHandler := handlers.NewUserRegistrationHandler(userRegistrationSvc)
+	webauthnHandler := handlers.NewWebAuthnHandler(logger, webauthnSvc, userRepo, webauthnSessionCache)
 
 	fmt.Println("Setting up Gin Router...")
 	// 9. Setup Gin Router
@@ -86,6 +96,18 @@ func main() {
 		v1.POST("/users/register/new", userRegistrationHandler.Register)
 		v1.POST("/users/register/verifyOTP", userRegistrationHandler.VerifyOTP)
 		v1.POST("/users/register/resendOTP", userRegistrationHandler.ResendOTP)
+	}
+
+	// WebAuthn Routes (Passkey Registration & Authentication)
+	webauthn := router.Group("/api/v1/webauthn")
+	{
+		// Passkey Registration Endpoints
+		webauthn.POST("/register/begin", webauthnHandler.RegisterBegin)
+		// webauthn.POST("/register/finish", webauthnHandler.RegisterFinish)
+
+		// Passkey Authentication Endpoints
+		// webauthn.POST("/login/begin", webauthnHandler.LoginBegin)
+		// webauthn.POST("/login/finish", webauthnHandler.LoginFinish)
 	}
 
 	fmt.Println("Starting the server...")

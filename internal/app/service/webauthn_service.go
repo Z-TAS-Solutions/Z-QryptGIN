@@ -1,7 +1,12 @@
 package service
 
 import (
+	"context"
+	"encoding/json"
+
+	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/app/database"
 	"github.com/go-webauthn/webauthn/protocol"
+	"github.com/go-webauthn/webauthn/protocol/webauthncose"
 	"github.com/go-webauthn/webauthn/webauthn"
 )
 
@@ -28,4 +33,62 @@ func InitWebAuthn() (*webauthn.WebAuthn, error) {
 		},
 	}
 	return webauthn.New(config)
+}
+
+// WebAuthnService handles WebAuthn registration and authentication operations
+type WebAuthnService struct {
+	wa *webauthn.WebAuthn
+}
+
+// NewWebAuthnService creates a new WebAuthnService instance
+func NewWebAuthnService(wa *webauthn.WebAuthn) *WebAuthnService {
+	return &WebAuthnService{wa: wa}
+}
+
+// getRegistrationOptions returns the array of registration options for BeginRegistration
+func (s *WebAuthnService) getRegistrationOptions() []webauthn.RegistrationOption {
+	return []webauthn.RegistrationOption{
+		func(cco *protocol.PublicKeyCredentialCreationOptions) {
+			// Registration Settings -> Supported Public Key Algorithms: Ed25519, ES256
+			cco.Parameters = []protocol.CredentialParameter{
+				{Type: protocol.PublicKeyCredentialType, Algorithm: webauthncose.AlgEdDSA},
+				{Type: protocol.PublicKeyCredentialType, Algorithm: webauthncose.AlgES256},
+			}
+
+			// Registration Settings -> Hints
+			cco.Hints = []protocol.PublicKeyCredentialHints{
+				protocol.PublicKeyCredentialHints("security-key"),
+				protocol.PublicKeyCredentialHints("client-device"),
+			}
+		},
+	}
+}
+
+// BeginRegistration initiates the WebAuthn registration ceremony for a user
+func (s *WebAuthnService) BeginRegistration(ctx context.Context, user *database.User) (*webauthn.SessionData, *protocol.CredentialCreation, error) {
+	// Begin the registration ceremony
+	creationData, sessionData, err := s.wa.BeginRegistration(user, s.getRegistrationOptions()...)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// Serialize session data for caching
+	_ = sessionData // Keep reference for cache storage
+
+	return sessionData, creationData, nil
+}
+
+// SerializeSessionData converts WebAuthn session data to JSON for caching
+func SerializeSessionData(sessionData *webauthn.SessionData) ([]byte, error) {
+	return json.Marshal(sessionData)
+}
+
+// DeserializeSessionData converts JSON back to WebAuthn session data
+func DeserializeSessionData(data []byte) (*webauthn.SessionData, error) {
+	var sessionData webauthn.SessionData
+	err := json.Unmarshal(data, &sessionData)
+	if err != nil {
+		return nil, err
+	}
+	return &sessionData, nil
 }
