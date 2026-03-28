@@ -25,13 +25,13 @@ func (s *ZCoreHub) Register(ctx context.Context, req *zcoreproto.RegisterRequest
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	s.nodes[req.PeerId] = req.ListenAddr
-	log.Printf("Registered Peer: %s at %s", req.PeerId, req.ListenAddr)
+	s.nodes[req.NodeId] = req.NodeAddr
+	log.Printf("Registered Peer: %s at %s", req.NodeId, req.NodeAddr)
 
 	return &zcoreproto.RegisterResponse{Success: true, Message: "Registered on Hub"}, nil
 }
 
-func main() {
+func RunZCoreRemote() {
 	listener, _ := net.Listen("tcp", ":50051")
 	zcoreprotoHub := grpc.NewServer()
 	zcoreproto.RegisterZCoreServiceServer(zcoreprotoHub, &ZCoreHub{
