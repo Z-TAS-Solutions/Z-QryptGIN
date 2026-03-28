@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 
-	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/app/database"
 	"github.com/go-webauthn/webauthn/protocol"
 	"github.com/go-webauthn/webauthn/protocol/webauthncose"
 	"github.com/go-webauthn/webauthn/webauthn"
@@ -65,7 +64,8 @@ func (s *WebAuthnService) getRegistrationOptions() []webauthn.RegistrationOption
 }
 
 // BeginRegistration initiates the WebAuthn registration ceremony for a user
-func (s *WebAuthnService) BeginRegistration(ctx context.Context, user *database.User) (*webauthn.SessionData, *protocol.CredentialCreation, error) {
+// Accepts any webauthn.User (database.User, PendingUser, etc.)
+func (s *WebAuthnService) BeginRegistration(ctx context.Context, user webauthn.User) (*webauthn.SessionData, *protocol.CredentialCreation, error) {
 	// Begin the registration ceremony
 	creationData, sessionData, err := s.wa.BeginRegistration(user, s.getRegistrationOptions()...)
 	if err != nil {

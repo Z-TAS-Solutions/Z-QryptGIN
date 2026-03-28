@@ -81,7 +81,7 @@ func main() {
 	// 8. Initialize Handlers
 	// userHandler := handlers.NewUserHandler(userSvc)
 	userRegistrationHandler := handlers.NewUserRegistrationHandler(userRegistrationSvc)
-	webauthnHandler := handlers.NewWebAuthnHandler(logger, webauthnSvc, userRepo, webauthnSessionCache)
+	webauthnHandler := handlers.NewWebAuthnHandler(logger, webauthnSvc, userRepo, webauthnSessionCache, redisClient)
 
 	fmt.Println("Setting up Gin Router...")
 	// 9. Setup Gin Router
