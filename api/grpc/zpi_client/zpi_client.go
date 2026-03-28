@@ -6,79 +6,52 @@ import (
 	"log"
 	"time"
 
-	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/pkg/ipc"
 	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/pkg/zscanproto"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-func RunZPiClient(ip string, ipcClient *ipc.ZPIPCClient) (zscanproto.ZPiControllerClient, zscanproto.ZPiController_ToFEventStreamClient) {
-	conn, err := grpc.Dial(ip, grpc.WithTransportCredentials(insecure.NewCredentials()))
+func RunZPiClient(ip string) (zscanproto.ZPiControllerClient, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	zPiConn, err := grpc.DialContext(ctx, ip,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithBlock(), // Wait until connection is ready
+	)
 	if err != nil {
-		log.Fatalf("failed to connect: %v", err)
+		return nil, fmt.Errorf("failed to connect to gRPC host at %s: %w", ip, err)
 	}
 
-	client := zscanproto.NewZPiControllerClient(conn)
-	log.Print("Connected to ZPi GRPC Host!")
+	zPiClient := zscanproto.NewZPiControllerClient(zPiConn)
+	log.Printf("Connected to ZPi GRPC Host: %s", ip)
 
-	tofConfigResp, _ := client.ConfigureToF(context.Background(), &zscanproto.ToFConfig{
-		Threshold: 320,
+	return zPiClient, nil
+}
+
+func InitializeZPiClient(zPiClient zscanproto.ZPiControllerClient, threshold uint32) (*zscanproto.Status, error) {
+
+	configCtx, configCancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer configCancel()
+
+	tofConfigResp, err := zPiClient.ConfigureToF(configCtx, &zscanproto.ToFConfig{
+		Threshold: uint32(threshold),
 	})
-	fmt.Println("ConfigureToF:", tofConfigResp.Message)
+	if err != nil {
+		return nil, fmt.Errorf("failed to configure ToF: %w", err)
+	}
 
-	stream, err := client.ToFEventStream(context.Background())
+	log.Printf("ToF Configured Successfully: %s", tofConfigResp.GetMessage())
+	return tofConfigResp, nil
+
+}
+
+func StartToFStream(zPiClient zscanproto.ZPiControllerClient) (zscanproto.ZPiController_ToFEventStreamClient, error) {
+	ToFEventStream, err := zPiClient.ToFEventStream(context.Background())
 	if err != nil {
 		log.Fatalf("Failed To Start ToF Event Stream: %v", err)
+		return nil, err
 	}
 
-	func() {
-		for {
-			evt, err := stream.Recv()
-			if err != nil {
-				log.Println("Server disconnected or error:", err)
-				return
-			}
-
-			if evt.Type == zscanproto.ToFEvent_TRIGGER {
-				log.Println("ToF trigger received!")
-
-				time.Sleep(2 * time.Second)
-
-				if ipcClient != nil {
-					log.Println("Sending dummy match request to Rust IPC...")
-					ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-					isMatch, score, err := ipcClient.MatchTemplate(ctx, "zischl", []byte("bleh..."))
-					cancel()
-
-					if err != nil {
-						log.Printf("IPC MatchTemplate Error: %v\n", err)
-					} else {
-						log.Printf("IPC MatchTemplate Result -> match=%v, score=%f\n", isMatch, score)
-					}
-				}
-
-				pendingState := &zscanproto.ToFEvent{
-					Type: zscanproto.ToFEvent_PENDING,
-				}
-				if err := stream.Send(pendingState); err != nil {
-					log.Println("Failed to send pending state:", err)
-					continue
-				}
-
-				time.Sleep(3 * time.Second)
-
-				response := &zscanproto.ToFEvent{
-					Type:      zscanproto.ToFEvent_RESULT,
-					LedStatus: zscanproto.LEDStatus_SUCCESS,
-				}
-				if err := stream.Send(response); err != nil {
-					log.Println("Failed to send response:", err)
-					continue
-				}
-				log.Println("Response sent !")
-			}
-		}
-	}()
-
-	return client, stream
+	return ToFEventStream, nil
 }
