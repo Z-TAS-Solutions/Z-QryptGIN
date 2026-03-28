@@ -64,7 +64,7 @@ func main() {
 	// 6. Initialize Repositories
 	userRepo := repository.NewUserRepository(db)
 	credentialRepo := repository.NewWebAuthnCredentialRepository(db)
-	// sessionRepo := repository.NewSessionRepository(redisClient)
+	sessionRepo := repository.NewSessionRepository(redisClient)
 
 	fmt.Println("Initializing Services...")
 	// 7. Initialize Services
@@ -94,11 +94,32 @@ func main() {
 	jwtService := service.NewJWTService(privateKey, publicKey, "Z-QryptGIN", redisClient)
 	logger.Info().Msg("JWT Service initialized with EdDSA algorithm and Redis session tracking (Hybrid Approach)")
 
+	fmt.Println("Initializing Services...")
+	// 7. Initialize Services (continued)
+	profileSvc := service.NewProfileService(userRepo)
+	notificationSvc := service.NewNotificationService(redisClient)
+	sessionSvc := service.NewSessionService(redisClient)
+	adminDashboardSvc := service.NewAdminDashboardService()
+	adminUserSvc := service.NewAdminUserService(userRepo)
+	adminDeviceSvc := service.NewAdminDeviceService()
+	adminAuthSvc := service.NewAdminAuthService()
+	adminSettingsSvc := service.NewAdminSettingsService()
+
 	fmt.Println("Initializing Handlers...")
 	// 8. Initialize Handlers
 	// userHandler := handlers.NewUserHandler(userSvc)
 	userRegistrationHandler := handlers.NewUserRegistrationHandler(userRegistrationSvc)
 	webauthnHandler := handlers.NewWebAuthnHandlerWithRegistration(logger, webauthnSvc, userRepo, credentialRepo, webauthnSessionCache, userRegistrationSvc, redisClient, jwtService)
+	userAccountHandler := handlers.NewUserAccountHandler(logger)
+	profileHandler := handlers.NewProfileHandler(profileSvc)
+	notificationHandler := handlers.NewNotificationHandler(notificationSvc)
+	sessionHandler := handlers.NewSessionHandler(sessionSvc)
+	adminDashboardHandler := handlers.NewAdminDashboardHandler(adminDashboardSvc)
+	adminUserHandler := handlers.NewAdminUserHandler(adminUserSvc)
+	adminDeviceHandler := handlers.NewAdminDeviceHandler(adminDeviceSvc)
+	adminAuthHandler := handlers.NewAdminAuthHandler(adminAuthSvc)
+	adminSettingsHandler := handlers.NewAdminSettingsHandler(adminSettingsSvc)
+	adminSecurityHandler := handlers.NewAdminSecurityHandler(adminSettingsSvc)
 
 	fmt.Println("Setting up Gin Router...")
 	// 9. Setup Gin Router
@@ -125,6 +146,101 @@ func main() {
 		// Passkey Authentication Endpoints
 		webauthn.POST("/login/begin", webauthnHandler.LoginBegin)
 		webauthn.POST("/login/finish", webauthnHandler.LoginFinish)
+	}
+
+	// Admin Routes
+	admin := router.Group("/api/v1/admin")
+	{
+		dash := admin.Group("/dashboard")
+		{
+			dash.GET("/analytics", adminDashboardHandler.GetAnalytics)
+			dash.GET("/auth-trends", adminDashboardHandler.GetAuthTrends)
+			dash.GET("/recent-auth-activity", adminDashboardHandler.GetRecentAuthActivity)
+		}
+
+		users := admin.Group("/users")
+		{
+			users.GET("", adminUserHandler.ListUsers)
+			users.GET("/:userId", adminUserHandler.GetUser)
+			users.PATCH("/:userId/lock-status", adminUserHandler.UpdateLockStatus)
+			users.DELETE("/:userId", adminUserHandler.DeleteUser)
+		}
+
+		devices := admin.Group("/devices")
+		{
+			devices.GET("", adminDeviceHandler.ListDevices)
+			devices.POST("/:deviceId/force-logout", adminDeviceHandler.ForceLogout)
+		}
+
+		security := admin.Group("/security")
+		{
+			security.PATCH("/mfa-enforcement", adminSecurityHandler.EnforceMFA)
+		}
+
+		authLogs := admin.Group("/auth")
+		{
+			authLogs.GET("/logs", adminAuthHandler.GetAuthLogs)
+			authLogs.GET("/analytics", adminAuthHandler.GetAuthAnalytics)
+			// Admin Public Auth (login/refresh) usually doesn't require Bearer token
+			authLogs.POST("/login", adminAuthHandler.Login)
+			authLogs.POST("/refresh", adminAuthHandler.Refresh)
+		}
+
+		settings := admin.Group("/settings")
+		{
+			settings.GET("", adminSettingsHandler.GetSettings)
+		}
+	}
+
+	// User Routes
+	user := router.Group("/api/v1/user")
+	{
+		auth := user.Group("/auth")
+		{
+			register := auth.Group("/register")
+			{
+				register.POST("/options", nil) // userAuthHandler.RegisterOptions
+				register.POST("/verify", nil) // userAuthHandler.RegisterVerify
+			}
+
+			login := auth.Group("/login")
+			{
+				login.POST("/options", nil) // userAuthHandler.LoginOptions
+				login.POST("/verify", nil) // userAuthHandler.LoginVerify
+			}
+
+			mfa := auth.Group("/mfa")
+			{
+				mfa.POST("/send", nil) // userMfaHandler.Send
+				mfa.POST("/respond", nil) // userMfaHandler.Respond
+			}
+		}
+
+		// Profile
+		profile := user.Group("/profile", server.RequireAuth(jwtService, sessionRepo))
+		{
+			profile.GET("", profileHandler.GetProfile)
+			profile.PATCH("", profileHandler.UpdateProfile)
+		}
+
+		// Notifications
+		notifications := user.Group("/notifications", server.RequireAuth(jwtService, sessionRepo))
+		{
+			notifications.GET("", notificationHandler.FetchNotifications)
+			notifications.PATCH("/read-all", notificationHandler.MarkAllRead)
+			notifications.PATCH("/:notificationId/status", notificationHandler.UpdateStatus)
+		}
+
+		// Sessions
+		sessions := user.Group("/sessions", server.RequireAuth(jwtService, sessionRepo))
+		{
+			sessions.GET("", sessionHandler.FetchActiveSessions)
+			sessions.POST("/logout-others", sessionHandler.SignOutOtherDevices)
+		}
+
+		// External User Account Functions (Protected - requires valid JWT)
+		user.POST("/force-logout-devices", server.RequireAuth(jwtService, sessionRepo), userAccountHandler.ForceLogoutAllDevices)
+		user.DELETE("/account/delete", server.RequireAuth(jwtService, sessionRepo), userAccountHandler.DeleteAccount)
 	}
 
 	fmt.Println("Starting the server...")
