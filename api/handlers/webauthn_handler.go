@@ -465,7 +465,11 @@ func (h *WebAuthnHandler) LoginFinish(c *gin.Context) {
 		return
 	}
 
+<<<<<<< HEAD
 	// 5. Load the user from the database by ID
+=======
+	// 5. Load the user from the database
+>>>>>>> 562ea9c (fixed the compatibility bug in the webauthn_handler.go)
 	authenticatedUser, err := h.userRepo.FindByID(credential.UserID)
 	if err != nil {
 		h.logger.Error().Err(err).Uint("user_id", credential.UserID).Msg("Failed to load user for authentication")
@@ -488,13 +492,16 @@ func (h *WebAuthnHandler) LoginFinish(c *gin.Context) {
 		})
 		return
 	}
+	
+	// Assign loaded credentials to user model so WebAuthnCredentials() can read them
+	authenticatedUser.Credentials = credentials
 
 	// 7. Create webauthn.User interface for verification
 	webauthnUser := &cache.PendingUser{
 		ID:          authenticatedUser.CustomID,
 		Email:       authenticatedUser.Email,
 		Name:        authenticatedUser.Name,
-		Credentials: credentialsToWebAuthnCredentials(credentials),
+		Credentials: authenticatedUser.WebAuthnCredentials(),
 	}
 
 	// 8. Complete the WebAuthn login ceremony
@@ -510,11 +517,19 @@ func (h *WebAuthnHandler) LoginFinish(c *gin.Context) {
 	}
 
 	// 9. Check for cloned credentials (sign count anomaly)
+<<<<<<< HEAD
 	if userData.Sign < credential.SignCount {
+=======
+	if userData.Authenticator.SignCount < credential.SignCount {
+>>>>>>> 562ea9c (fixed the compatibility bug in the webauthn_handler.go)
 		h.logger.Warn().
 			Uint("user_id", authenticatedUser.ID).
 			Uint32("stored_sign_count", credential.SignCount).
+<<<<<<< HEAD
 			Uint32("new_sign_count", userData.Sign).
+=======
+			Uint32("new_sign_count", userData.Authenticator.SignCount).
+>>>>>>> 562ea9c (fixed the compatibility bug in the webauthn_handler.go)
 			Msg("Potential cloned credential detected")
 		_ = h.credentialRepo.UpdateCloneWarning(credentialID, true)
 		c.JSON(http.StatusUnauthorized, gin.H{
@@ -526,7 +541,11 @@ func (h *WebAuthnHandler) LoginFinish(c *gin.Context) {
 	}
 
 	// 10. Update the sign count for this credential
+<<<<<<< HEAD
 	err = h.credentialRepo.UpdateSignCount(credentialID, userData.Sign)
+=======
+	err = h.credentialRepo.UpdateSignCount(credentialID, userData.Authenticator.SignCount)
+>>>>>>> 562ea9c (fixed the compatibility bug in the webauthn_handler.go)
 	if err != nil {
 		h.logger.Error().Err(err).Msg("Failed to update credential sign count")
 		// Non-fatal, continue with login
@@ -543,7 +562,11 @@ func (h *WebAuthnHandler) LoginFinish(c *gin.Context) {
 		ID:           uuid.New().String(),
 		UserID:       authenticatedUser.ID,
 		DeviceName:   c.GetHeader("User-Agent"), // User-Agent as device identifier
+<<<<<<< HEAD
 		DeviceID:     deviceID,
+=======
+		DeviceID:     assertionResponse.ID,
+>>>>>>> 562ea9c (fixed the compatibility bug in the webauthn_handler.go)
 		IPAddress:    c.ClientIP(),
 		UserAgent:    c.GetHeader("User-Agent"),
 		IsActive:     true,
@@ -624,6 +647,7 @@ func generateSessionToken() string {
 	return uuid.New().String() + ":" + time.Now().Format("20060102150405")
 }
 
+<<<<<<< HEAD
 // credentialsToWebAuthnCredentials converts database WebAuthn credentials to webauthn.Credential format
 func credentialsToWebAuthnCredentials(dbCredentials []database.WebAuthnCredential) []webauthn.Credential {
 	var waCredentials []webauthn.Credential
@@ -640,3 +664,5 @@ func credentialsToWebAuthnCredentials(dbCredentials []database.WebAuthnCredentia
 	}
 	return waCredentials
 }
+=======
+>>>>>>> 562ea9c (fixed the compatibility bug in the webauthn_handler.go)
