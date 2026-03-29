@@ -1,4 +1,4 @@
-package zcore_remote
+package znode_remote
 
 import (
 	"context"

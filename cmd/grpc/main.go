@@ -3,7 +3,7 @@ package main
 import (
 	"log"
 
-	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/app/ochestrator/node_engine"
+	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/app/service/znode_remote"
 	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/pkg/ipc"
 	"google.golang.org/grpc"
 )
@@ -27,9 +27,10 @@ func RunRemoteGRPC(compute bool, remoteAddr string) {
 }
 
 func main() {
-	nodeID := "ZTAS@0001"
-	nodeAddr := "localhost:50052"
-	hubAddr := "localhost:50051"
+	//nodeID := "ZTAS@0001"
+	//nodeAddr := "localhost:50052"
+	//hubAddr := "localhost:50051"
 
-	node_engine.RunZCoreWHub(nodeID, nodeAddr, hubAddr)
+	znode_remote.RunZCoreRemote()
+	//node_engine.RunZCoreWHub(nodeID, nodeAddr, hubAddr)
 }
