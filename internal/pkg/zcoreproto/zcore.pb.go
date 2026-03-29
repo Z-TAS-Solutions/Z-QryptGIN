@@ -213,6 +213,102 @@ func (x *PingResponse) GetReply() string {
 	return ""
 }
 
+type EnrollmentRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *EnrollmentRequest) Reset() {
+	*x = EnrollmentRequest{}
+	mi := &file_api_proto_zcore_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EnrollmentRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EnrollmentRequest) ProtoMessage() {}
+
+func (x *EnrollmentRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_proto_zcore_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EnrollmentRequest.ProtoReflect.Descriptor instead.
+func (*EnrollmentRequest) Descriptor() ([]byte, []int) {
+	return file_api_proto_zcore_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *EnrollmentRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+type EnrollmentResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Accepted      bool                   `protobuf:"varint,1,opt,name=accepted,proto3" json:"accepted,omitempty"`
+	Message       string                 `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *EnrollmentResponse) Reset() {
+	*x = EnrollmentResponse{}
+	mi := &file_api_proto_zcore_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EnrollmentResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EnrollmentResponse) ProtoMessage() {}
+
+func (x *EnrollmentResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_proto_zcore_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EnrollmentResponse.ProtoReflect.Descriptor instead.
+func (*EnrollmentResponse) Descriptor() ([]byte, []int) {
+	return file_api_proto_zcore_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *EnrollmentResponse) GetAccepted() bool {
+	if x != nil {
+		return x.Accepted
+	}
+	return false
+}
+
+func (x *EnrollmentResponse) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
 var File_api_proto_zcore_proto protoreflect.FileDescriptor
 
 const file_api_proto_zcore_proto_rawDesc = "" +
@@ -228,10 +324,17 @@ const file_api_proto_zcore_proto_rawDesc = "" +
 	"\vPingRequest\x12\x18\n" +
 	"\amessage\x18\x01 \x01(\tR\amessage\"$\n" +
 	"\fPingResponse\x12\x14\n" +
-	"\x05reply\x18\x01 \x01(\tR\x05reply2\x90\x01\n" +
+	"\x05reply\x18\x01 \x01(\tR\x05reply\",\n" +
+	"\x11EnrollmentRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\"J\n" +
+	"\x12EnrollmentResponse\x12\x1a\n" +
+	"\baccepted\x18\x01 \x01(\bR\baccepted\x12\x18\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage2\x90\x01\n" +
 	"\fZCoreService\x12E\n" +
 	"\bRegister\x12\x1b.zcoreproto.RegisterRequest\x1a\x1c.zcoreproto.RegisterResponse\x129\n" +
-	"\x04Ping\x12\x17.zcoreproto.PingRequest\x1a\x18.zcoreproto.PingResponseB\x1bZ\x19./internal/pkg/zcoreprotob\x06proto3"
+	"\x04Ping\x12\x17.zcoreproto.PingRequest\x1a\x18.zcoreproto.PingResponse2c\n" +
+	"\x0fZNodeController\x12P\n" +
+	"\x0fStartEnrollment\x12\x1d.zcoreproto.EnrollmentRequest\x1a\x1e.zcoreproto.EnrollmentResponseB\x1bZ\x19./internal/pkg/zcoreprotob\x06proto3"
 
 var (
 	file_api_proto_zcore_proto_rawDescOnce sync.Once
@@ -245,20 +348,24 @@ func file_api_proto_zcore_proto_rawDescGZIP() []byte {
 	return file_api_proto_zcore_proto_rawDescData
 }
 
-var file_api_proto_zcore_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_api_proto_zcore_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_api_proto_zcore_proto_goTypes = []any{
-	(*RegisterRequest)(nil),  // 0: zcoreproto.RegisterRequest
-	(*RegisterResponse)(nil), // 1: zcoreproto.RegisterResponse
-	(*PingRequest)(nil),      // 2: zcoreproto.PingRequest
-	(*PingResponse)(nil),     // 3: zcoreproto.PingResponse
+	(*RegisterRequest)(nil),    // 0: zcoreproto.RegisterRequest
+	(*RegisterResponse)(nil),   // 1: zcoreproto.RegisterResponse
+	(*PingRequest)(nil),        // 2: zcoreproto.PingRequest
+	(*PingResponse)(nil),       // 3: zcoreproto.PingResponse
+	(*EnrollmentRequest)(nil),  // 4: zcoreproto.EnrollmentRequest
+	(*EnrollmentResponse)(nil), // 5: zcoreproto.EnrollmentResponse
 }
 var file_api_proto_zcore_proto_depIdxs = []int32{
 	0, // 0: zcoreproto.ZCoreService.Register:input_type -> zcoreproto.RegisterRequest
 	2, // 1: zcoreproto.ZCoreService.Ping:input_type -> zcoreproto.PingRequest
-	1, // 2: zcoreproto.ZCoreService.Register:output_type -> zcoreproto.RegisterResponse
-	3, // 3: zcoreproto.ZCoreService.Ping:output_type -> zcoreproto.PingResponse
-	2, // [2:4] is the sub-list for method output_type
-	0, // [0:2] is the sub-list for method input_type
+	4, // 2: zcoreproto.ZNodeController.StartEnrollment:input_type -> zcoreproto.EnrollmentRequest
+	1, // 3: zcoreproto.ZCoreService.Register:output_type -> zcoreproto.RegisterResponse
+	3, // 4: zcoreproto.ZCoreService.Ping:output_type -> zcoreproto.PingResponse
+	5, // 5: zcoreproto.ZNodeController.StartEnrollment:output_type -> zcoreproto.EnrollmentResponse
+	3, // [3:6] is the sub-list for method output_type
+	0, // [0:3] is the sub-list for method input_type
 	0, // [0:0] is the sub-list for extension type_name
 	0, // [0:0] is the sub-list for extension extendee
 	0, // [0:0] is the sub-list for field type_name
@@ -275,9 +382,9 @@ func file_api_proto_zcore_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_proto_zcore_proto_rawDesc), len(file_api_proto_zcore_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   4,
+			NumMessages:   6,
 			NumExtensions: 0,
-			NumServices:   1,
+			NumServices:   2,
 		},
 		GoTypes:           file_api_proto_zcore_proto_goTypes,
 		DependencyIndexes: file_api_proto_zcore_proto_depIdxs,

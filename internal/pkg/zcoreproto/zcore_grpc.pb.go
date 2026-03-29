@@ -157,3 +157,105 @@ var ZCoreService_ServiceDesc = grpc.ServiceDesc{
 	Streams:  []grpc.StreamDesc{},
 	Metadata: "api/proto/zcore.proto",
 }
+
+const (
+	ZNodeController_StartEnrollment_FullMethodName = "/zcoreproto.ZNodeController/StartEnrollment"
+)
+
+// ZNodeControllerClient is the client API for ZNodeController service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+type ZNodeControllerClient interface {
+	StartEnrollment(ctx context.Context, in *EnrollmentRequest, opts ...grpc.CallOption) (*EnrollmentResponse, error)
+}
+
+type zNodeControllerClient struct {
+	cc grpc.ClientConnInterface
+}
+
+func NewZNodeControllerClient(cc grpc.ClientConnInterface) ZNodeControllerClient {
+	return &zNodeControllerClient{cc}
+}
+
+func (c *zNodeControllerClient) StartEnrollment(ctx context.Context, in *EnrollmentRequest, opts ...grpc.CallOption) (*EnrollmentResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(EnrollmentResponse)
+	err := c.cc.Invoke(ctx, ZNodeController_StartEnrollment_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// ZNodeControllerServer is the server API for ZNodeController service.
+// All implementations must embed UnimplementedZNodeControllerServer
+// for forward compatibility.
+type ZNodeControllerServer interface {
+	StartEnrollment(context.Context, *EnrollmentRequest) (*EnrollmentResponse, error)
+	mustEmbedUnimplementedZNodeControllerServer()
+}
+
+// UnimplementedZNodeControllerServer must be embedded to have
+// forward compatible implementations.
+//
+// NOTE: this should be embedded by value instead of pointer to avoid a nil
+// pointer dereference when methods are called.
+type UnimplementedZNodeControllerServer struct{}
+
+func (UnimplementedZNodeControllerServer) StartEnrollment(context.Context, *EnrollmentRequest) (*EnrollmentResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method StartEnrollment not implemented")
+}
+func (UnimplementedZNodeControllerServer) mustEmbedUnimplementedZNodeControllerServer() {}
+func (UnimplementedZNodeControllerServer) testEmbeddedByValue()                         {}
+
+// UnsafeZNodeControllerServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to ZNodeControllerServer will
+// result in compilation errors.
+type UnsafeZNodeControllerServer interface {
+	mustEmbedUnimplementedZNodeControllerServer()
+}
+
+func RegisterZNodeControllerServer(s grpc.ServiceRegistrar, srv ZNodeControllerServer) {
+	// If the following call panics, it indicates UnimplementedZNodeControllerServer was
+	// embedded by pointer and is nil.  This will cause panics if an
+	// unimplemented method is ever invoked, so we test this at initialization
+	// time to prevent it from happening at runtime later due to I/O.
+	if t, ok := srv.(interface{ testEmbeddedByValue() }); ok {
+		t.testEmbeddedByValue()
+	}
+	s.RegisterService(&ZNodeController_ServiceDesc, srv)
+}
+
+func _ZNodeController_StartEnrollment_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(EnrollmentRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ZNodeControllerServer).StartEnrollment(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ZNodeController_StartEnrollment_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ZNodeControllerServer).StartEnrollment(ctx, req.(*EnrollmentRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+// ZNodeController_ServiceDesc is the grpc.ServiceDesc for ZNodeController service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+var ZNodeController_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "zcoreproto.ZNodeController",
+	HandlerType: (*ZNodeControllerServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "StartEnrollment",
+			Handler:    _ZNodeController_StartEnrollment_Handler,
+		},
+	},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: "api/proto/zcore.proto",
+}

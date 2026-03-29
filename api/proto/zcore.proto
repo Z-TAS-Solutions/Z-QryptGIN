@@ -24,3 +24,17 @@ message PingRequest {
 message PingResponse {
   string reply = 1;
 }
+
+
+service ZNodeController {
+  rpc StartEnrollment(EnrollmentRequest) returns (EnrollmentResponse);
+}
+
+message EnrollmentRequest {
+  string user_id = 1;
+}
+
+message EnrollmentResponse {
+  bool accepted = 1;
+  string message = 2;
+}
