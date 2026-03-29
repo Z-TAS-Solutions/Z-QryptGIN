@@ -59,6 +59,7 @@ func RunZClientHandlerEx(ZCoreService *zcore.ZCoreService, nodeID, nodeAddr, hub
 	}()
 
 	go func() {
+		defer wg.Done()
 
 		log.Println("Dialing Remote ZCoreHub...")
 		zCoreHubClient, err := znodecontroller.ConnectZCoreHub(nodeID, nodeAddr, hubAddr, true)
