@@ -1,3 +1,16 @@
+*.exe
+*.out
+*.app
+
+*.test
+*.prof
+*.log
+
+.env
+
+.DS_Store
+Thumbs.db
+
 #binaries from programs and plugins
 *.exit
 *.exe~
