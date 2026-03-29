@@ -1,4 +1,4 @@
-// These are the configs
+// This is the config package for the entire application, including server settings, database connection info, Redis config, and Gmail API credentials. It also includes a helper function for setting up CORS middleware in Gin.
 package configs
 
 import (
@@ -80,6 +80,7 @@ func (conf *Config) CorsNew() gin.HandlerFunc {
 	allowedOrigin := GetEnvOrPanic(constants.EnvKeys.CorsAllowedOrigin)
 
 	return cors.New(cors.Config{
+		AllowOrigins:     []string{"http://localhost:5173"},
 		AllowMethods:     []string{http.MethodGet, http.MethodPost, http.MethodOptions},
 		AllowHeaders:     []string{constants.Headers.Origin, "Content-Type", "Accept", "Authorization", "X-Session-Token"},
 		ExposeHeaders:    []string{constants.Headers.ContentLength},

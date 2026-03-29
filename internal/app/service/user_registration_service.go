@@ -24,7 +24,7 @@ type UserRegistrationService interface {
 	RegisterUser(ctx context.Context, req dto.UserRegistrationDetailsRequest) (*dto.UserRegistrationDetailsResponse, error)
 	VerifyOTP(ctx context.Context, req dto.UserRegistrationOTPRequest) (*dto.UserRegistrationOTPResponse, error)
 	ResendOTP(ctx context.Context, req dto.ResendOTPRequest) (*dto.ResendOTPResponse, error)
-	FinishRegistration(ctx context.Context, userID database.UserCustomID, parsedResponse *protocol.ParsedCredentialCreationData, sessionData *webauthn.SessionData) error
+	FinishRegistration(ctx context.Context, userID database.UserCustomID, parsedResponse *protocol.ParsedCredentialCreationData, sessionData *webauthn.SessionData, authenticatorName string) error
 }
 
 type userRegistrationService struct {
@@ -263,7 +263,7 @@ func (s *userRegistrationService) ResendOTP(ctx context.Context, req dto.ResendO
 
 // FinishRegistration completes the user registration with WebAuthn credential
 // This is called after the user successfully completes the WebAuthn ceremony
-func (s *userRegistrationService) FinishRegistration(ctx context.Context, userID database.UserCustomID, parsedResponse *protocol.ParsedCredentialCreationData, sessionData *webauthn.SessionData) error {
+func (s *userRegistrationService) FinishRegistration(ctx context.Context, userID database.UserCustomID, parsedResponse *protocol.ParsedCredentialCreationData, sessionData *webauthn.SessionData, authenticatorName string) error {
 	// 1) Retrieve the registration cache entry by userID to get all user data
 	regCacheEntry, err := s.findCacheEntryByUserID(ctx, userID)
 	if err != nil {
@@ -347,7 +347,7 @@ func (s *userRegistrationService) FinishRegistration(ctx context.Context, userID
 		AAGUID:          database.AAGUID(verifiedCredential.Authenticator.AAGUID),
 		SignCount:       verifiedCredential.Authenticator.SignCount,
 		CloneWarning:    false, // No cloning on first registration
-		AuthenticatorName: database.AuthenticatorName(""), // Empty authenticator name initially
+		AuthenticatorName: database.AuthenticatorName(authenticatorName), // Use provided authenticator name
 	}
 
 	// Create credential using transaction

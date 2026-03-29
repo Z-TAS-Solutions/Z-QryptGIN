@@ -64,11 +64,11 @@ func main() {
 	// 6. Initialize Repositories
 	userRepo := repository.NewUserRepository(db)
 	credentialRepo := repository.NewWebAuthnCredentialRepository(db)
-	// sessionRepo := repository.NewSessionRepository(redisClient)
+	sessionRepo := repository.NewSessionRepository(redisClient)
 
 	fmt.Println("Initializing Services...")
 	// 7. Initialize Services
-	// userSvc := service.NewUserService(userRepo, sessionRepo, emailSvc)
+	sessionSvc := service.NewSessionService(sessionRepo)
 
 	fmt.Println("Initializing WebAuthn...")
 	// 7.5 Initialize WebAuthn for Passkey Registration/Authentication
@@ -96,7 +96,7 @@ func main() {
 
 	fmt.Println("Initializing Handlers...")
 	// 8. Initialize Handlers
-	// userHandler := handlers.NewUserHandler(userSvc)
+	userHandler := handlers.NewUserHandler(sessionSvc)
 	userRegistrationHandler := handlers.NewUserRegistrationHandler(userRegistrationSvc)
 	webauthnHandler := handlers.NewWebAuthnHandlerWithRegistration(logger, webauthnSvc, userRepo, credentialRepo, webauthnSessionCache, userRegistrationSvc, redisClient, jwtService)
 
@@ -107,12 +107,12 @@ func main() {
 
 	fmt.Println("Configuring API Routes...")
 	// API Routes
-	v1 := router.Group("/api/v1/admin")
+	register := router.Group("/api/v1/admin")
 	{
 		// v1.POST("/users/RegisterUser", userHandler.Register)
-		v1.POST("/users/register/new", userRegistrationHandler.Register)
-		v1.POST("/users/register/verifyOTP", userRegistrationHandler.VerifyOTP)
-		v1.POST("/users/register/resendOTP", userRegistrationHandler.ResendOTP)
+		register.POST("/users/register/new", userRegistrationHandler.Register)
+		register.POST("/users/register/verifyOTP", userRegistrationHandler.VerifyOTP)
+		register.POST("/users/register/resendOTP", userRegistrationHandler.ResendOTP)
 	}
 
 	// WebAuthn Routes (Passkey Registration & Authentication)
@@ -125,6 +125,39 @@ func main() {
 		// Passkey Authentication Endpoints
 		webauthn.POST("/login/begin", webauthnHandler.LoginBegin)
 		webauthn.POST("/login/finish", webauthnHandler.LoginFinish)
+	}
+
+	// User Routes
+	user := router.Group("/api/v1/user")
+	{
+		auth := user.Group("/auth")
+		{
+			register := auth.Group("/register")
+			{
+				register.POST("/options", nil) // userAuthHandler.RegisterOptions
+				register.POST("/verify", nil)  // userAuthHandler.RegisterVerify
+			}
+
+			login := auth.Group("/login")
+			{
+				login.POST("/options", nil) // userAuthHandler.LoginOptions
+				login.POST("/verify", nil)  // userAuthHandler.LoginVerify
+			}
+
+			mfa := auth.Group("/mfa")
+			{
+				mfa.POST("/send", nil)    // userMfaHandler.Send
+				mfa.POST("/respond", nil) // userMfaHandler.Respond
+			}
+		}
+		dashboard := user.Group("/dashboard")
+		dashboard.Use(server.RequireAuth(jwtService, sessionRepo))
+		{
+			session := dashboard.Group("/session")
+			{
+				session.GET("/activeSessions", userHandler.GetActiveSessions)
+			}
+		}
 	}
 
 	fmt.Println("Starting the server...")
