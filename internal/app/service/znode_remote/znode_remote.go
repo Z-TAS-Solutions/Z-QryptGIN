@@ -5,6 +5,7 @@ import (
 	"log"
 	"net"
 	"sync"
+	"time"
 
 	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/pkg/zcoreproto"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/recovery"
@@ -33,22 +34,35 @@ func (s *ZCoreHub) Register(ctx context.Context, req *zcoreproto.RegisterRequest
 }
 
 func RunZCoreRemote() {
-	listener, _ := net.Listen("tcp", ":50051")
+	for {
+		log.Println("[ZCoreHub] Attempting to start Z-Qrypt GRPC Server on :50051...")
 
-	opts := []grpc.ServerOption{
-		grpc.ChainUnaryInterceptor(
-			recovery.UnaryServerInterceptor(),
-		),
-	}
+		listener, err := net.Listen("tcp", ":50051")
+		if err != nil {
+			log.Printf("[ZCoreHub] Failed to listen: %v. Retrying in 5 seconds...", err)
+			time.Sleep(5 * time.Second)
+			continue
+		}
 
-	zcoreprotoHub := grpc.NewServer(opts...)
+		opts := []grpc.ServerOption{
+			grpc.ChainUnaryInterceptor(
+				recovery.UnaryServerInterceptor(),
+			),
+		}
 
-	zcoreproto.RegisterZCoreServiceServer(zcoreprotoHub, &ZCoreHub{
-		nodes: make(map[string]string),
-	})
-	log.Println("[ZCoreHub] Z-Qrypt GRPC Server Starting On :50051...")
+		zcoreprotoHub := grpc.NewServer(opts...)
 
-	if err := zcoreprotoHub.Serve(listener); err != nil {
-		log.Fatalf("[ZCoreHub] Server failed to serve: %v", err)
+		zcoreproto.RegisterZCoreServiceServer(zcoreprotoHub, &ZCoreHub{
+			nodes: make(map[string]string),
+		})
+
+		log.Println("[ZCoreHub] Z-Qrypt GRPC Server Running...")
+
+		if err := zcoreprotoHub.Serve(listener); err != nil {
+			log.Printf("[ZCoreHub] Server crashed or stopped: %v", err)
+		}
+
+		log.Println("[ZCoreHub] Restarting server in 5 seconds...")
+		time.Sleep(5 * time.Second)
 	}
 }
