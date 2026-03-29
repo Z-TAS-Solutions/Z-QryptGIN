@@ -1,7 +1,9 @@
 package main
 
-import "github.com/Z-TAS-Solutions/Z-QryptGIN/internal/app/service/znode_remote"
+import (
+	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/app/ochestrator/znode_engine"
+)
 
 func main() {
-	znode_remote.RunZCoreRemote()
+	znode_engine.RunZCoreRemote()
 }
