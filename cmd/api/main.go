@@ -66,11 +66,13 @@ func main() {
 	credentialRepo := repository.NewWebAuthnCredentialRepository(db)
 	sessionRepo := repository.NewSessionRepository(redisClient)
 	notificationRepo := repository.NewNotificationRepository(db)
+	dashboardRepo := repository.NewDashboardRepository(db)
 
 	fmt.Println("Initializing Services...")
 	// 7. Initialize Services
 	sessionSvc := service.NewSessionService(sessionRepo)
 	notificationSvc := service.NewNotificationService(notificationRepo)
+	dashboardSvc := service.NewDashboardService(dashboardRepo)
 
 	fmt.Println("Initializing WebAuthn...")
 	// 7.5 Initialize WebAuthn for Passkey Registration/Authentication
@@ -100,6 +102,7 @@ func main() {
 	// 8. Initialize Handlers
 	userHandler := handlers.NewUserHandler(sessionSvc, notificationSvc)
 	sessionHandler := handlers.NewSessionHandler(sessionSvc)
+	dashboardHandler := handlers.NewDashboardHandler(dashboardSvc)
 	userRegistrationHandler := handlers.NewUserRegistrationHandler(userRegistrationSvc)
 	webauthnHandler := handlers.NewWebAuthnHandlerWithRegistration(logger, webauthnSvc, userRepo, credentialRepo, webauthnSessionCache, userRegistrationSvc, redisClient, jwtService)
 
@@ -110,12 +113,26 @@ func main() {
 
 	fmt.Println("Configuring API Routes...")
 	// API Routes
-	register := router.Group("/api/v1/admin")
+	admin := router.Group("/api/v1/admin")
 	{
-		// v1.POST("/users/RegisterUser", userHandler.Register)
-		register.POST("/users/register/new", userRegistrationHandler.Register)
-		register.POST("/users/register/verifyOTP", userRegistrationHandler.VerifyOTP)
-		register.POST("/users/register/resendOTP", userRegistrationHandler.ResendOTP)
+		// User registration endpoints (no auth required during registration)
+		admin.POST("/users/register/new", userRegistrationHandler.Register)
+		admin.POST("/users/register/verifyOTP", userRegistrationHandler.VerifyOTP)
+		admin.POST("/users/register/resendOTP", userRegistrationHandler.ResendOTP)
+
+		// Admin dashboard endpoints (require authentication and admin role)
+		protected := admin.Group("")
+		protected.Use(server.RequireAuth(jwtService, sessionRepo))
+		protected.Use(server.RequireRole("Admin"))
+		protected.Use(server.ValidateRoleConsistency(jwtService, sessionRepo))
+		{
+			// Authentication trends endpoint
+			dashboard := protected.Group("/dashboard")
+			{
+				dashboard.GET("/auth-trends", dashboardHandler.GetAuthenticationTrends)
+				dashboard.GET("/metrics", dashboardHandler.GetDashboardMetrics)
+			}
+		}
 	}
 
 	// WebAuthn Routes (Passkey Registration & Authentication)

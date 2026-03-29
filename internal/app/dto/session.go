@@ -14,6 +14,7 @@ type Session struct {
 	ID           string    `json:"id"`
 	UserID       uint      `json:"user_id"`
 	JTI          string    `json:"jti"`
+	Role         string    `json:"role"`
 	DeviceName   string    `json:"device_name"`
 	DeviceID     string    `json:"device_id"`
 	IPAddress    string    `json:"ip_address"`

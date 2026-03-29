@@ -8,6 +8,11 @@
 
 # Test binary, build with 'go tes -c'
 *.test
+api.exe
+bin/app
+bin\app
+bin/app.exe
+bin\app.exe
 
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
