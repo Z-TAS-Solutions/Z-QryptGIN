@@ -38,6 +38,7 @@ func (s *notificationService) GetNotificationsByUserID(userID uint, limit int, o
 		}
 
 		notificationResponses = append(notificationResponses, dto.NotificationResponse{
+			ID:        string(notif.NotifiID),
 			Title:     notif.Title,
 			Details:   notif.Message,
 			Timestamp: notif.CreatedAt.UnixMilli(),

@@ -10,6 +10,7 @@ const (
 
 // NotificationResponse represents a single notification in the response
 type NotificationResponse struct {
+	ID        string             `json:"id"`
 	Title     string             `json:"title"`
 	Details   string             `json:"details"`
 	Timestamp int64              `json:"timestamp"` // Unix milliseconds
