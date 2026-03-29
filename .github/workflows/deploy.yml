@@ -3,14 +3,15 @@ name: Deploy Z-QryptGIN API
 on:
   push:
     branches:
-      - main  # change to your branch if needed
+      - main  # change if you want a different branch
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    environment: CI/CD   # <-- this makes environment secrets available
 
     steps:
-      # Step 1: Optional checkout if you need repo context in GitHub Actions
+      # Step 1: Checkout repo (optional, not needed for deploy.sh, but good practice)
       - name: Checkout repository
         uses: actions/checkout@v3
 
@@ -21,6 +22,4 @@ jobs:
           host: ${{ secrets.SERVER_IP }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
-          script: |
-            chmod +x /home/Z-TAS/Z-QryptGIN/deploy.sh
-            /home/Z-TAS/Z-QcryptGIN/deploy.sh
+          script: /home/Z-TAS/Z-QryptGIN/deploy.sh
