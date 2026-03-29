@@ -34,3 +34,7 @@ configs/*.env
 configs/*.json
 configs/dev.env
 configs\dev.env
+
+#Documentation files
+docs/*.md
+docs\*.md
