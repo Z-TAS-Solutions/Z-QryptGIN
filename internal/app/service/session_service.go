@@ -2,111 +2,87 @@ package service
 
 import (
 	"context"
+	"fmt"
+	"time"
 
 	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/app/dto"
-	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/app/repository"
+	"github.com/redis/go-redis/v9"
+	"github.com/rs/zerolog/log"
 )
 
 type SessionService interface {
-	GetActiveSessionsByUserID(ctx context.Context, userID uint, currentJTI string, limit int, offset int) (*dto.GetActiveSessionsResponseData, error)
-	LogoutOtherSessions(ctx context.Context, userID uint, currentJTI string) (int, error)
+	FetchActiveSessions(ctx context.Context, userID string) (*dto.FetchActiveSessionsResponse, error)
+	LogoutOtherDevices(ctx context.Context, userID string, req dto.LogoutOtherDevicesRequest) (*dto.LogoutOtherDevicesResponse, error)
 }
 
 type sessionService struct {
-	sessionRepo repository.SessionRepository
+	redisClient *redis.Client
 }
 
-func NewSessionService(sessionRepo repository.SessionRepository) SessionService {
+func NewSessionService(redisClient *redis.Client) SessionService {
 	return &sessionService{
-		sessionRepo: sessionRepo,
+		redisClient: redisClient,
 	}
 }
 
-// GetActiveSessionsByUserID retrieves all active sessions for a user and returns formatted response with pagination
-func (s *sessionService) GetActiveSessionsByUserID(ctx context.Context, userID uint, currentJTI string, limit int, offset int) (*dto.GetActiveSessionsResponseData, error) {
-	// Validate and set default pagination values
-	if limit <= 0 || limit > 100 {
-		limit = 20
-	}
-	if offset < 0 {
-		offset = 0
-	}
+func (s *sessionService) FetchActiveSessions(ctx context.Context, userID string) (*dto.FetchActiveSessionsResponse, error) {
+	log.Info().Str("user_id", userID).Msg("Fetching active sessions")
 
-	sessions, err := s.sessionRepo.GetActiveSessionsByUserID(ctx, userID)
-	if err != nil {
-		return nil, err
-	}
-
-	// Apply pagination
-	total := len(sessions)
-	start := offset
-	end := offset + limit
-
-	if start > total {
-		start = total
-	}
-	if end > total {
-		end = total
-	}
-
-	paginatedSessions := sessions[start:end]
-
-	activeSessionResponses := make([]dto.ActiveSessionResponse, 0, len(paginatedSessions))
-
-	for _, session := range paginatedSessions {
-		// Check if this is the current session
-		isCurrent := session.JTI == currentJTI
-
-		activeSessionResponse := dto.ActiveSessionResponse{
-			SessionID:  session.JTI,
-			DeviceID:   session.DeviceID,
-			DeviceName: session.DeviceName,
-			Location:   session.Location,
-			IPAddress:  session.IPAddress,
-			LastActive: session.LastActiveAt.UnixMilli(), // Convert to milliseconds
-			Current:    isCurrent,
-		}
-
-		activeSessionResponses = append(activeSessionResponses, activeSessionResponse)
-	}
-
-	hasMore := end < total
-
-	return &dto.GetActiveSessionsResponseData{
-		Sessions: activeSessionResponses,
-		Pagination: dto.PaginationInfo{
-			Limit:    limit,
-			Offset:   offset,
-			Returned: len(activeSessionResponses),
-			HasMore:  hasMore,
+	// Mock active sessions
+	sessions := []dto.SessionDTO{
+		{
+			SessionID:    "sess-001-current",
+			DeviceInfo:   "Chrome on Windows",
+			IPAddress:    "192.168.1.100",
+			UserAgent:    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+			LastActivity: time.Now().Add(-5 * time.Minute),
+			CreatedAt:    time.Now().AddDate(0, 0, -2),
+			ExpiresAt:    time.Now().AddDate(0, 0, 28),
+			Current:      true,
 		},
+		{
+			SessionID:    "sess-002",
+			DeviceInfo:   "Safari on iPhone",
+			IPAddress:    "203.0.113.45",
+			UserAgent:    "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X)",
+			LastActivity: time.Now().Add(-2 * time.Hour),
+			CreatedAt:    time.Now().AddDate(0, 0, -10),
+			ExpiresAt:    time.Now().AddDate(0, 0, 20),
+			Current:      false,
+		},
+		{
+			SessionID:    "sess-003",
+			DeviceInfo:   "Firefox on Mac",
+			IPAddress:    "198.51.100.22",
+			UserAgent:    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)",
+			LastActivity: time.Now().Add(-1 * time.Day),
+			CreatedAt:    time.Now().AddDate(0, 0, -5),
+			ExpiresAt:    time.Now().AddDate(0, 0, 25),
+			Current:      false,
+		},
+	}
+
+	return &dto.FetchActiveSessionsResponse{
+		Success:  true,
+		Sessions: sessions,
+		Total:    len(sessions),
 	}, nil
 }
 
-// LogoutOtherSessions logs out all other sessions for a user except the current one
-func (s *sessionService) LogoutOtherSessions(ctx context.Context, userID uint, currentJTI string) (int, error) {
-	sessions, err := s.sessionRepo.GetActiveSessionsByUserID(ctx, userID)
-	if err != nil {
-		return 0, err
+func (s *sessionService) LogoutOtherDevices(ctx context.Context, userID string, req dto.LogoutOtherDevicesRequest) (*dto.LogoutOtherDevicesResponse, error) {
+	log.Info().Str("user_id", userID).Msg("Logging out other devices")
+
+	// Simulate revoking sessions
+	var revoked int
+	if req.ExcludeSessionID != nil {
+		revoked = 2 // exclude 1 session, revoke others
+	} else {
+		revoked = 3 // revoke all
 	}
 
-	terminatedCount := 0
-
-	for _, session := range sessions {
-		// Skip the current session
-		if session.JTI == currentJTI {
-			continue
-		}
-
-		// Revoke the session
-		err := s.sessionRepo.RevokeSession(ctx, session.JTI)
-		if err != nil {
-			// Log the error but continue to revoke other sessions
-			continue
-		}
-
-		terminatedCount++
-	}
-
-	return terminatedCount, nil
+	return &dto.LogoutOtherDevicesResponse{
+		Success: true,
+		Message: fmt.Sprintf("successfully logged out %d device(s)", revoked),
+		Revoked: revoked,
+	}, nil
 }
