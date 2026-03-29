@@ -132,6 +132,10 @@ func main() {
 				dashboard.GET("/auth-trends", dashboardHandler.GetAuthenticationTrends)
 				dashboard.GET("/metrics", dashboardHandler.GetDashboardMetrics)
 			}
+			mfa_admin := protected.Group("/mfa")
+			{
+				mfa_admin.GET("/enforce", nil) // adminMfaHandler.GetPendingMfaRequests
+			}
 		}
 	}
 
