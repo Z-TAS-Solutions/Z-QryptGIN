@@ -99,6 +99,7 @@ func main() {
 	fmt.Println("Initializing Handlers...")
 	// 8. Initialize Handlers
 	userHandler := handlers.NewUserHandler(sessionSvc, notificationSvc)
+	sessionHandler := handlers.NewSessionHandler(sessionSvc)
 	userRegistrationHandler := handlers.NewUserRegistrationHandler(userRegistrationSvc)
 	webauthnHandler := handlers.NewWebAuthnHandlerWithRegistration(logger, webauthnSvc, userRepo, credentialRepo, webauthnSessionCache, userRegistrationSvc, redisClient, jwtService)
 
@@ -141,7 +142,11 @@ func main() {
 			protected.PATCH("/notifications/:notificationId/status", userHandler.UpdateNotificationStatus)
 			protected.PATCH("/notifications/read-all", userHandler.MarkAllAsRead)
 
-			// Dashboard routes
+			// Session management routes
+			protected.GET("/sessions", sessionHandler.GetActiveSessions)
+			protected.POST("/sessions/logout-others", sessionHandler.LogoutOthers)
+
+			// Dashboard routes (legacy - keeping for backward compatibility)
 			dashboard := protected.Group("/dashboard")
 			{
 				session := dashboard.Group("/session")
