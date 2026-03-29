@@ -17,6 +17,7 @@ type SessionRepository interface {
 	CreateSession(ctx context.Context, session *dto.Session) error
 	GetSessionByJTI(ctx context.Context, jti string) (*dto.Session, error)
 	GetActiveSessionsByUserID(ctx context.Context, userID uint) ([]dto.Session, error)
+	RevokeSession(ctx context.Context, jti string) error
 }
 
 type sessionRepository struct {
@@ -106,4 +107,9 @@ func (r *sessionRepository) GetActiveSessionsByUserID(ctx context.Context, userI
 	}
 
 	return sessions, nil
+}
+
+// RevokeSession revokes/deletes a session by JTI
+func (r *sessionRepository) RevokeSession(ctx context.Context, jti string) error {
+	return r.redis.Del(ctx, "session:"+jti).Err()
 }

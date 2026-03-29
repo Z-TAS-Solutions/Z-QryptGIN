@@ -18,6 +18,7 @@ var (
 	ErrInvalidActivityID     = errors.New("invalid Activity ID format (ACT-XXXXXXXX)")
 	ErrInvalidPasskeyID      = errors.New("invalid Passkey ID format (PassK-XXXXXXXX)")
 	ErrInvalidSessionID      = errors.New("invalid Session ID format (SESS-XXXXXXXX)")
+	ErrInvalidDeviceID       = errors.New("invalid Device ID format (DEVC-XXXXXX)")
 	ErrInvalidStatus         = errors.New("invalid user status")
 	ErrInvalidSecurityLevel  = errors.New("invalid security level")
 	ErrInvalidNotifyType     = errors.New("invalid notification type")
@@ -48,6 +49,7 @@ var (
 	activityLogIDRegex  = regexp.MustCompile(`^ACT-[a-zA-Z0-9]{8}$`)
 	passkeyIDRegex      = regexp.MustCompile(`^PassK-[a-zA-Z0-9]{8}$`)
 	sessionIDRegex      = regexp.MustCompile(`^SESS-[a-zA-Z0-9]{8}$`)
+	deviceIDRegex       = regexp.MustCompile(`^DEVC-[a-zA-Z0-9]{6}$`)
 	nicRegex            = regexp.MustCompile(`^([0-9]{9}[vVxX]|[0-9]{12})$`)
 	attestationTypeRegex = regexp.MustCompile(`^[a-z0-9\-]+$`)
 )
@@ -149,6 +151,15 @@ type SessionID string
 func (si SessionID) Validate() error {
 	if !sessionIDRegex.MatchString(string(si)) {
 		return ErrInvalidSessionID
+	}
+	return nil
+}
+
+type DeviceCustomID string
+
+func (di DeviceCustomID) Validate() error {
+	if !deviceIDRegex.MatchString(string(di)) {
+		return ErrInvalidDeviceID
 	}
 	return nil
 }

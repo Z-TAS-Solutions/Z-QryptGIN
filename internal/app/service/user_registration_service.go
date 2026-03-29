@@ -15,6 +15,7 @@ import (
 	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/app/dto"
 	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/app/repository"
 	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/pkg/ratelimit"
+	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/pkg/utils"
 	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog/log"
 	"gorm.io/gorm"
@@ -447,19 +448,5 @@ func generateOTP(max int) string {
 }
 
 func generateCustomID() database.UserCustomID {
-	var table = []byte{
-		'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',
-		'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
-		'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M',
-		'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
-		'0', '1', '2', '3', '4', '5', '6', '7', '8', '9'}
-	b := make([]byte, 6)
-	n, err := io.ReadAtLeast(rand.Reader, b, 6)
-	if n != 6 || err != nil {
-		return database.UserCustomID("default_custom_id")
-	}
-	for i := 0; i < len(b); i++ {
-		b[i] = table[int(b[i])%len(table)]
-	}
-	return database.UserCustomID("USR-" + string(b))
+	return database.UserCustomID(utils.GenerateUserID())
 }

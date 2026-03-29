@@ -65,10 +65,12 @@ func main() {
 	userRepo := repository.NewUserRepository(db)
 	credentialRepo := repository.NewWebAuthnCredentialRepository(db)
 	sessionRepo := repository.NewSessionRepository(redisClient)
+	notificationRepo := repository.NewNotificationRepository(db)
 
 	fmt.Println("Initializing Services...")
 	// 7. Initialize Services
 	sessionSvc := service.NewSessionService(sessionRepo)
+	notificationSvc := service.NewNotificationService(notificationRepo)
 
 	fmt.Println("Initializing WebAuthn...")
 	// 7.5 Initialize WebAuthn for Passkey Registration/Authentication
@@ -96,7 +98,8 @@ func main() {
 
 	fmt.Println("Initializing Handlers...")
 	// 8. Initialize Handlers
-	userHandler := handlers.NewUserHandler(sessionSvc)
+	userHandler := handlers.NewUserHandler(sessionSvc, notificationSvc)
+	sessionHandler := handlers.NewSessionHandler(sessionSvc)
 	userRegistrationHandler := handlers.NewUserRegistrationHandler(userRegistrationSvc)
 	webauthnHandler := handlers.NewWebAuthnHandlerWithRegistration(logger, webauthnSvc, userRepo, credentialRepo, webauthnSessionCache, userRegistrationSvc, redisClient, jwtService)
 
@@ -130,32 +133,36 @@ func main() {
 	// User Routes
 	user := router.Group("/api/v1/user")
 	{
+		// Protected routes (require authentication)
+		protected := user.Group("")
+		protected.Use(server.RequireAuth(jwtService, sessionRepo))
+		{
+			// Notifications endpoint
+			protected.GET("/notifications", userHandler.GetNotifications)
+			protected.PATCH("/notifications/:notificationId/status", userHandler.UpdateNotificationStatus)
+			protected.PATCH("/notifications/read-all", userHandler.MarkAllAsRead)
+
+			// Session management routes
+			protected.GET("/sessions", sessionHandler.GetActiveSessions)
+			protected.POST("/sessions/logout-others", sessionHandler.LogoutOthers)
+
+			// Dashboard routes (legacy - keeping for backward compatibility)
+			dashboard := protected.Group("/dashboard")
+			{
+				session := dashboard.Group("/session")
+				{
+					session.GET("/activeSessions", userHandler.GetActiveSessions)
+				}
+			}
+		}
+
+		// Auth routes (non-protected)
 		auth := user.Group("/auth")
 		{
-			register := auth.Group("/register")
-			{
-				register.POST("/options", nil) // userAuthHandler.RegisterOptions
-				register.POST("/verify", nil)  // userAuthHandler.RegisterVerify
-			}
-
-			login := auth.Group("/login")
-			{
-				login.POST("/options", nil) // userAuthHandler.LoginOptions
-				login.POST("/verify", nil)  // userAuthHandler.LoginVerify
-			}
-
 			mfa := auth.Group("/mfa")
 			{
 				mfa.POST("/send", nil)    // userMfaHandler.Send
 				mfa.POST("/respond", nil) // userMfaHandler.Respond
-			}
-		}
-		dashboard := user.Group("/dashboard")
-		dashboard.Use(server.RequireAuth(jwtService, sessionRepo))
-		{
-			session := dashboard.Group("/session")
-			{
-				session.GET("/activeSessions", userHandler.GetActiveSessions)
 			}
 		}
 	}
