@@ -78,6 +78,7 @@ func main() {
 	sessionSvc := service.NewSessionService(sessionRepo)
 	notificationSvc := service.NewNotificationService(notificationRepo)
 	dashboardSvc := service.NewDashboardService(dashboardRepo)
+	userSvc := service.NewUserService(userRepo)
 
 	fmt.Println("Initializing WebAuthn...")
 	// 7.5 Initialize WebAuthn for Passkey Registration/Authentication
@@ -128,6 +129,7 @@ func main() {
 	dashboardHandler := handlers.NewDashboardHandler(dashboardSvc)
 	userRegistrationHandler := handlers.NewUserRegistrationHandler(userRegistrationSvc)
 	webauthnHandler := handlers.NewWebAuthnHandlerWithRegistration(logger, webauthnSvc, userRepo, credentialRepo, webauthnSessionCache, userRegistrationSvc, redisClient, jwtService)
+	adminUserHandler := handlers.NewAdminUserHandler(userSvc)
 
 	fmt.Println("Setting up Gin Router...")
 	// 9. Setup Gin Router
@@ -158,6 +160,12 @@ func main() {
 			mfa_admin := protected.Group("/mfa")
 			{
 				mfa_admin.GET("/enforce", nil) // adminMfaHandler.GetPendingMfaRequests
+			}
+			
+			// User management endpoints
+			users_admin := protected.Group("/users")
+			{
+				users_admin.GET("", adminUserHandler.ListUsers)
 			}
 		}
 	}
