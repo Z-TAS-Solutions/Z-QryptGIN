@@ -30,7 +30,7 @@ func RunZCoreWHub(nodeID, nodeAddr, hubAddr string) {
 	for {
 		select {
 		case event := <-eventQueue:
-			log.Printf("Received gRPC event: %s", event.Type)
+			log.Printf("Received gRPC event: %v", event.Type)
 
 			switch event.Type {
 			case zcore.EventType(0):
@@ -75,9 +75,11 @@ func RunZCoreRemote() {
 
 		zcoreprotoHub := grpc.NewServer(opts...)
 
-		zcoreproto.RegisterZCoreServiceServer(zcoreprotoHub, &znode_remote.ZCoreHub{
+		hub := &znode_remote.ZCoreHub{
 			Nodes: make(map[string]string),
-		})
+		}
+		zcoreproto.RegisterZCoreServiceServer(zcoreprotoHub, hub)
+		zcoreproto.RegisterZNodeControllerServer(zcoreprotoHub, hub)
 
 		log.Println("[ZCoreHub] Z-Qrypt GRPC Server Running...")
 

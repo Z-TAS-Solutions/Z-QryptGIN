@@ -25,17 +25,13 @@ func RunZCoreNode(nodeAddr string, eventChannel chan zcore.ZEvent) {
 		}
 
 		nodeServer := grpc.NewServer()
-		zcoreproto.RegisterZCoreServiceServer(nodeServer, &znode.ZCoreNode{EventChannel: eventChannel})
+		srv := &znode.ZCoreNode{EventChannel: eventChannel}
+		zcoreproto.RegisterZCoreServiceServer(nodeServer, srv)
+		zcoreproto.RegisterZNodeControllerServer(nodeServer, srv)
 
 		log.Printf("[ZCoreNode] Node Server listening on %s", nodeAddr)
 		if err := nodeServer.Serve(zlistener); err != nil {
 			log.Printf("[ZCoreNode] Server exited: %v", err)
-		}
-
-		if err != nil {
-			log.Printf("[ZCoreNodeManager] Server crashed: %v. Restarting in 3s...", err)
-			time.Sleep(3 * time.Second)
-			continue
 		}
 
 		log.Println("[ZCoreNodeManager] Server shutting down...")

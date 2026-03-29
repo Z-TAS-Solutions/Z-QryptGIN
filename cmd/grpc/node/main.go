@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/app/ochestrator/node_engine"
+	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/app/ochestrator/znode_engine"
 )
 
 func main() {
@@ -9,5 +9,5 @@ func main() {
 	nodeAddr := "localhost:50052"
 	hubAddr := "104.43.91.57:50051"
 
-	node_engine.RunZCoreWHub(nodeID, nodeAddr, hubAddr)
+	znode_engine.RunZCoreWHub(nodeID, nodeAddr, hubAddr)
 }
