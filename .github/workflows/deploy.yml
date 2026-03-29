@@ -1,0 +1,26 @@
+name: Deploy Z-QryptGIN API
+
+on:
+  push:
+    branches:
+      - main  # change to your branch if needed
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Optional checkout if you need repo context in GitHub Actions
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      # Step 2: SSH to your server and run deploy.sh
+      - name: Run deploy script on server
+        uses: appleboy/ssh-action@v0.1.9
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          script: |
+            chmod +x /home/Z-TAS/Z-QryptGIN/deploy.sh
+            /home/Z-TAS/Z-QcryptGIN/deploy.sh
