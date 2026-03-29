@@ -19,6 +19,7 @@ import (
 	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/app/dto"
 	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/app/repository"
 	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/app/service"
+	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/pkg/utils"
 )
 
 type WebAuthnHandler struct {
@@ -222,9 +223,10 @@ func (h *WebAuthnHandler) RegisterFinish(c *gin.Context) {
 	// - Save the WebAuthn credential
 	// - Clean up the caches
 
+	userAgent := c.GetHeader("User-Agent")
 	authenticatorName := c.GetHeader("X-Authenticator-Name")
 	if authenticatorName == "" {
-		authenticatorName = c.GetHeader("User-Agent")
+		authenticatorName = utils.ParseDeviceName(userAgent)
 	}
 	if authenticatorName == "" {
 		authenticatorName = "Unknown Device"
@@ -285,10 +287,10 @@ func (h *WebAuthnHandler) RegisterFinish(c *gin.Context) {
 	registrationSession := &dto.Session{
 		ID:           uuid.New().String(),
 		UserID:       registeredUser.ID,
-		DeviceName:   c.GetHeader("User-Agent"),
+		DeviceName:   utils.ParseDeviceName(userAgent),
 		DeviceID:     fmt.Sprintf("%s-registration", uuid.New().String()),
-		IPAddress:    c.ClientIP(),
-		UserAgent:    c.GetHeader("User-Agent"),
+		IPAddress:    utils.GetClientIP(c),
+		UserAgent:    userAgent,
 		IsActive:     true,
 		MfaStatus:    dto.MfaStatusVerified,
 		LastActiveAt: time.Now(),
@@ -552,13 +554,14 @@ func (h *WebAuthnHandler) LoginFinish(c *gin.Context) {
 	if deviceID == "" {
 		deviceID = fmt.Sprintf("device-%d", resolvedCredential.ID)
 	}
+	userAgent := c.GetHeader("User-Agent")
 	sessionInfo := &dto.Session{
 		ID:           uuid.New().String(),
 		UserID:       authenticatedUser.ID,
-		DeviceName:   c.GetHeader("User-Agent"),
+		DeviceName:   utils.ParseDeviceName(userAgent),
 		DeviceID:     deviceID,
-		IPAddress:    c.ClientIP(),
-		UserAgent:    c.GetHeader("User-Agent"),
+		IPAddress:    utils.GetClientIP(c),
+		UserAgent:    userAgent,
 		IsActive:     true,
 		MfaStatus:    dto.MfaStatusVerified,
 		LastActiveAt: time.Now(),
