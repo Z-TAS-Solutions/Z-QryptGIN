@@ -1,4 +1,4 @@
-package zcore_node
+package znode_controller
 
 import (
 	"context"
@@ -6,22 +6,12 @@ import (
 	"net"
 	"time"
 
-	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/pkg/zcoreproto"
-
 	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/app/service/zcore"
+	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/app/service/znode"
+	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/pkg/zcoreproto"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
-
-type ZCoreNode struct {
-	zcoreproto.UnimplementedZCoreServiceServer
-	EventChannel chan zcore.ZEvent
-}
-
-func (s *ZCoreNode) Ping(ctx context.Context, req *zcoreproto.PingRequest) (*zcoreproto.PingResponse, error) {
-	log.Printf("Node received Ping from Hub: %s", req.Message)
-	return &zcoreproto.PingResponse{Reply: "Node is active!"}, nil
-}
 
 func RunZCoreNode(nodeAddr string, eventChannel chan zcore.ZEvent) {
 	for {
@@ -35,7 +25,7 @@ func RunZCoreNode(nodeAddr string, eventChannel chan zcore.ZEvent) {
 		}
 
 		nodeServer := grpc.NewServer()
-		zcoreproto.RegisterZCoreServiceServer(nodeServer, &ZCoreNode{EventChannel: eventChannel})
+		zcoreproto.RegisterZCoreServiceServer(nodeServer, &znode.ZCoreNode{EventChannel: eventChannel})
 
 		log.Printf("[ZCoreNode] Node Server listening on %s", nodeAddr)
 		if err := nodeServer.Serve(zlistener); err != nil {

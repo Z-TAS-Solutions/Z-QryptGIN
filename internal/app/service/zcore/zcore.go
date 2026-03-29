@@ -18,6 +18,7 @@ type EventType int
 
 const (
 	ZPiTrigger EventType = iota
+	ZPiTriggerOffline
 	ZHubTrigger
 )
 
@@ -112,19 +113,34 @@ func (z *ZCoreService) HandleFusionMatch(zFusionResponse *zfusionproto.ZFusionRe
 	}
 }
 
-func (z *ZCoreService) ZCoreEngine() {
-	tofEventStream, _ := zpi_client.StartToFStream(z.ZPiClient)
-
+func (z *ZCoreService) ZCoreEngine(eventQueue chan ZEvent) {
 	for {
-		tofEvent, err := tofEventStream.Recv()
+		log.Println("[ZCore] Initializing ToF Stream...")
+
+		tofEventStream, err := zpi_client.StartToFStream(z.ZPiClient)
 		if err != nil {
-			log.Println("ToF Stream lost:", err)
-			return
+			log.Printf("[ZCore] Connection failed: %v. Retrying in 3s...", err)
+			time.Sleep(3 * time.Second)
+			continue
 		}
 
-		if tofEvent.Type == zscanproto.ToFEvent_TRIGGER {
-			log.Println("[ZCore] ToF trigger received!")
-			go z.HandleFusionSession(tofEventStream)
+		log.Println("[ZCore] ToF Stream connected and active.")
+
+		for {
+			tofEvent, err := tofEventStream.Recv()
+			if err != nil {
+				log.Printf("[ZCore] Stream lost: %v. Attempting reconnect...", err)
+				eventQueue <- ZEvent{Type: EventType(1), Payload: err}
+				break
+			}
+
+			if tofEvent.Type == zscanproto.ToFEvent_TRIGGER {
+				eventQueue <- ZEvent{
+					Type:    EventType(0),
+					Payload: tofEventStream,
+				}
+			}
+
 		}
 	}
 }
