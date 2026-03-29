@@ -139,6 +139,7 @@ func main() {
 			// Notifications endpoint
 			protected.GET("/notifications", userHandler.GetNotifications)
 			protected.PATCH("/notifications/:notificationId/status", userHandler.UpdateNotificationStatus)
+			protected.PATCH("/notifications/read-all", userHandler.MarkAllAsRead)
 
 			// Dashboard routes
 			dashboard := protected.Group("/dashboard")

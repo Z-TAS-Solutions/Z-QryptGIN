@@ -180,3 +180,38 @@ func (h *UserHandler) UpdateNotificationStatus(c *gin.Context) {
 
 	c.JSON(http.StatusOK, response)
 }
+
+// MarkAllAsRead marks all notifications for the authenticated user as read
+// It extracts the user_id from JWT context and performs a bulk update operation
+func (h *UserHandler) MarkAllAsRead(c *gin.Context) {
+	// Extract user_id from context (set by RequireAuth middleware)
+	userIDInterface, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error":   "Unauthorized",
+			"message": "Authentication required",
+		})
+		return
+	}
+
+	userID, ok := userIDInterface.(uint)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "Internal server error",
+			"message": "Failed to update notifications",
+		})
+		return
+	}
+
+	// Mark all notifications as read
+	response, err := h.notificationSvc.MarkAllAsRead(userID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "Internal server error",
+			"message": "Failed to update notifications",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, response)
+}

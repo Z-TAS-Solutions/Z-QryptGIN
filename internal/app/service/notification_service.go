@@ -8,6 +8,7 @@ import (
 type NotificationService interface {
 	GetNotificationsByUserID(userID uint, limit int, offset int, unreadOnly bool, sortOrder string) (*dto.GetNotificationsResponse, error)
 	UpdateNotificationStatus(userID uint, notificationID string, status string) (*dto.UpdateNotificationStatusResponse, error)
+	MarkAllAsRead(userID uint) (*dto.MarkAllAsReadResponse, error)
 }
 
 type notificationService struct {
@@ -85,6 +86,24 @@ func (s *notificationService) UpdateNotificationStatus(userID uint, notification
 	}
 	response.Data.NotificationID = string(notification.NotifiID)
 	response.Data.Status = status
+
+	return response, nil
+}
+
+// MarkAllAsRead marks all unread notifications for a user as read
+// Fully idempotent - returns 0 if all are already read
+func (s *notificationService) MarkAllAsRead(userID uint) (*dto.MarkAllAsReadResponse, error) {
+	// Update all unread notifications for the user
+	updatedCount, err := s.notificationRepo.MarkAllNotificationsAsRead(userID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Build and return response
+	response := &dto.MarkAllAsReadResponse{
+		Message: "All notifications marked as read",
+	}
+	response.Data.UpdatedCount = updatedCount
 
 	return response, nil
 }

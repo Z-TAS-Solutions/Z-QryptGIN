@@ -57,3 +57,11 @@ type UpdateNotificationStatusResponse struct {
 		Status         string `json:"status"`
 	} `json:"data"`
 }
+
+// MarkAllAsReadResponse is the response for marking all notifications as read
+type MarkAllAsReadResponse struct {
+	Message string `json:"message"`
+	Data    struct {
+		UpdatedCount int64 `json:"updated_count"`
+	} `json:"data"`
+}

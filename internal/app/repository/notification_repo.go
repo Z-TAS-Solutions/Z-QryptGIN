@@ -9,6 +9,7 @@ type NotificationRepository interface {
 	GetNotificationsByUserID(userID uint, limit int, offset int, unreadOnly bool, sortOrder string) ([]database.Notification, int64, error)
 	GetNotificationByIDAndUserID(notificationID string, userID uint) (*database.Notification, error)
 	UpdateNotificationStatus(notificationID string, userID uint, isRead bool) error
+	MarkAllNotificationsAsRead(userID uint) (int64, error)
 }
 
 type notificationRepository struct {
@@ -82,4 +83,20 @@ func (r *notificationRepository) UpdateNotificationStatus(notificationID string,
 	}
 
 	return nil
+}
+
+// MarkAllNotificationsAsRead marks all unread notifications for a user as read
+// Returns the count of notifications that were updated
+func (r *notificationRepository) MarkAllNotificationsAsRead(userID uint) (int64, error) {
+	result := r.db.
+		Where("user_id = ? AND is_read = ?", userID, false).
+		Model(&database.Notification{}).
+		Update("is_read", true)
+
+	if result.Error != nil {
+		return 0, result.Error
+	}
+
+	// Return the number of rows affected (fully idempotent - returns 0 if all already read)
+	return result.RowsAffected, nil
 }
