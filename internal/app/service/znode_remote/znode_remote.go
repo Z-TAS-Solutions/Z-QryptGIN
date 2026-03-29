@@ -33,6 +33,14 @@ func (s *ZCoreHub) Register(ctx context.Context, req *zcoreproto.RegisterRequest
 	return &zcoreproto.RegisterResponse{Success: true, Message: "[ZCoreHub] Registered on Hub"}, nil
 }
 
+func (s *ZCoreHub) Request2FA(ctx context.Context, req *zcoreproto.TwoFARequest) (*zcoreproto.TwoFAResponse, error) {
+	log.Printf("[ZCoreHub] 2FA Triggered for User: %s", req.UserId)
+	return &zcoreproto.TwoFAResponse{
+		Success: true,
+		Message: "2FA request received and logged",
+	}, nil
+}
+
 func (s *ZCoreHub) StartEnrollment(ctx context.Context, req *zcoreproto.EnrollmentRequest) (*zcoreproto.EnrollmentResponse, error) {
 	s.mu.RLock()
 	nodes := make(map[string]string)

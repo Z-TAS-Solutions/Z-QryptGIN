@@ -181,6 +181,19 @@ func (z *ZCoreService) HandleFusionMatch(zFusionResponse *zfusionproto.ZFusionRe
 		} else {
 			log.Printf("Match SUCCESS (Score: %f)", score)
 			ledStatus = zscanproto.LEDStatus_SUCCESS
+
+			go func(uid string) {
+				twoFACtx, twoFACancel := context.WithTimeout(context.Background(), 5*time.Second)
+				defer twoFACancel()
+
+				log.Printf("[ZCore] Sending 2FA Request for User: %s", uid)
+				resp, err := z.ZCoreHub.Request2FA(twoFACtx, &zcoreproto.TwoFARequest{UserId: uid})
+				if err != nil {
+					log.Printf("[ZCore] 2FA Request failed for User %s: %v", uid, err)
+					return
+				}
+				log.Printf("[ZCore] 2FA Response for User %s: %s (Success: %v)", uid, resp.Message, resp.Success)
+			}("zischl")
 		}
 
 		tofEventStream.Send(&zscanproto.ToFEvent{

@@ -5,6 +5,7 @@ option go_package = "./internal/pkg/zcoreproto";
 service ZCoreService {
   rpc Register(RegisterRequest) returns (RegisterResponse);
   rpc Ping(PingRequest) returns (PingResponse);
+  rpc Request2FA(TwoFARequest) returns (TwoFAResponse);
 }
 
 message RegisterRequest {
@@ -23,6 +24,15 @@ message PingRequest {
 
 message PingResponse {
   string reply = 1;
+}
+
+message TwoFARequest {
+  string user_id = 1;
+}
+
+message TwoFAResponse {
+  bool success = 1;
+  string message = 2;
 }
 
 

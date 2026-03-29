@@ -19,8 +19,9 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	ZCoreService_Register_FullMethodName = "/zcoreproto.ZCoreService/Register"
-	ZCoreService_Ping_FullMethodName     = "/zcoreproto.ZCoreService/Ping"
+	ZCoreService_Register_FullMethodName   = "/zcoreproto.ZCoreService/Register"
+	ZCoreService_Ping_FullMethodName       = "/zcoreproto.ZCoreService/Ping"
+	ZCoreService_Request2FA_FullMethodName = "/zcoreproto.ZCoreService/Request2FA"
 )
 
 // ZCoreServiceClient is the client API for ZCoreService service.
@@ -29,6 +30,7 @@ const (
 type ZCoreServiceClient interface {
 	Register(ctx context.Context, in *RegisterRequest, opts ...grpc.CallOption) (*RegisterResponse, error)
 	Ping(ctx context.Context, in *PingRequest, opts ...grpc.CallOption) (*PingResponse, error)
+	Request2FA(ctx context.Context, in *TwoFARequest, opts ...grpc.CallOption) (*TwoFAResponse, error)
 }
 
 type zCoreServiceClient struct {
@@ -59,12 +61,23 @@ func (c *zCoreServiceClient) Ping(ctx context.Context, in *PingRequest, opts ...
 	return out, nil
 }
 
+func (c *zCoreServiceClient) Request2FA(ctx context.Context, in *TwoFARequest, opts ...grpc.CallOption) (*TwoFAResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(TwoFAResponse)
+	err := c.cc.Invoke(ctx, ZCoreService_Request2FA_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ZCoreServiceServer is the server API for ZCoreService service.
 // All implementations must embed UnimplementedZCoreServiceServer
 // for forward compatibility.
 type ZCoreServiceServer interface {
 	Register(context.Context, *RegisterRequest) (*RegisterResponse, error)
 	Ping(context.Context, *PingRequest) (*PingResponse, error)
+	Request2FA(context.Context, *TwoFARequest) (*TwoFAResponse, error)
 	mustEmbedUnimplementedZCoreServiceServer()
 }
 
@@ -80,6 +93,9 @@ func (UnimplementedZCoreServiceServer) Register(context.Context, *RegisterReques
 }
 func (UnimplementedZCoreServiceServer) Ping(context.Context, *PingRequest) (*PingResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method Ping not implemented")
+}
+func (UnimplementedZCoreServiceServer) Request2FA(context.Context, *TwoFARequest) (*TwoFAResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method Request2FA not implemented")
 }
 func (UnimplementedZCoreServiceServer) mustEmbedUnimplementedZCoreServiceServer() {}
 func (UnimplementedZCoreServiceServer) testEmbeddedByValue()                      {}
@@ -138,6 +154,24 @@ func _ZCoreService_Ping_Handler(srv interface{}, ctx context.Context, dec func(i
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ZCoreService_Request2FA_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(TwoFARequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ZCoreServiceServer).Request2FA(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ZCoreService_Request2FA_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ZCoreServiceServer).Request2FA(ctx, req.(*TwoFARequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ZCoreService_ServiceDesc is the grpc.ServiceDesc for ZCoreService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -152,6 +186,10 @@ var ZCoreService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Ping",
 			Handler:    _ZCoreService_Ping_Handler,
+		},
+		{
+			MethodName: "Request2FA",
+			Handler:    _ZCoreService_Request2FA_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
