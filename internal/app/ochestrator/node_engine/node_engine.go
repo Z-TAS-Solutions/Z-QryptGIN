@@ -17,7 +17,7 @@ func RunZCoreWHub(nodeID, nodeAddr, hubAddr string) {
 
 	ZCoreService := &zcore.ZCoreService{}
 
-	zclient_handler.RunZClientHandler(ZCoreService)
+	zclient_handler.RunZClientHandlerEx(ZCoreService, nodeID, nodeAddr, hubAddr)
 
 	go ZCoreService.ZCoreEngine(eventQueue)
 

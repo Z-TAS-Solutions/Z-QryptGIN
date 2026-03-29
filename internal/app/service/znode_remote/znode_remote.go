@@ -27,9 +27,9 @@ func (s *ZCoreHub) Register(ctx context.Context, req *zcoreproto.RegisterRequest
 	defer s.mu.Unlock()
 
 	s.nodes[req.NodeId] = req.NodeAddr
-	log.Printf("Registered Peer: %s at %s", req.NodeId, req.NodeAddr)
+	log.Printf("[ZCoreHub] Registered Peer: %s at %s", req.NodeId, req.NodeAddr)
 
-	return &zcoreproto.RegisterResponse{Success: true, Message: "Registered on Hub"}, nil
+	return &zcoreproto.RegisterResponse{Success: true, Message: "[ZCoreHub] Registered on Hub"}, nil
 }
 
 func RunZCoreRemote() {
@@ -46,7 +46,7 @@ func RunZCoreRemote() {
 	zcoreproto.RegisterZCoreServiceServer(zcoreprotoHub, &ZCoreHub{
 		nodes: make(map[string]string),
 	})
-	log.Println("Z-Qrypt GRPC Server Starting On :50051...")
+	log.Println("[ZCoreHub] Z-Qrypt GRPC Server Starting On :50051...")
 
 	if err := zcoreprotoHub.Serve(listener); err != nil {
 		log.Fatalf("[ZCoreHub] Server failed to serve: %v", err)
