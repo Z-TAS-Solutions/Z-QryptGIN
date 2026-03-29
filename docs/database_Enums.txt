@@ -1,0 +1,14 @@
+users table:
+status- Active, Inactive
+security_level- low, medium, high
+biometric_engine_status- online, offline
+
+mfa_challenges table:
+status : pending, approved, denied, expired
+decision : approved, denied
+
+notifications table
+type : security, info, success, error, warning
+
+activity_log table
+type : Failed_Login, mfa_Approved, Mfa_Denied, login_Success, Logout, Passkey_Activated, Session_Revoked
