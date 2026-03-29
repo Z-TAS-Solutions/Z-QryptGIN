@@ -4,11 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"net"
-	"runtime"
 	"time"
 
-	"github.com/Microsoft/go-winio"
 	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/pkg/zpipcproto"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -21,23 +18,7 @@ type ZPIPCClient struct {
 }
 
 func RunZIPCClient() (*ZPIPCClient, error) {
-	var target string
-	var dialer func(context.Context, string) (net.Conn, error)
-	var options []grpc.DialOption
-
-	if runtime.GOOS == "windows" {
-		target = `\\.\pipe\zpipcproto`
-		dialer = func(ctx context.Context, addr string) (net.Conn, error) {
-			return winio.DialPipeContext(ctx, addr)
-		}
-		options = append(options, grpc.WithAuthority("localhost"))
-	} else {
-		target = "/tmp/zpipcproto.sock"
-		dialer = func(ctx context.Context, addr string) (net.Conn, error) {
-			var d net.Dialer
-			return d.DialContext(ctx, "unix", addr)
-		}
-	}
+	target, dialer, options := getPlatformDialConfig()
 
 	options = append(options,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
@@ -54,7 +35,7 @@ func RunZIPCClient() (*ZPIPCClient, error) {
 		if err != nil {
 			log.Printf("[ZIPC] Connection failed to %s: %v. Retrying in 7 seconds...", target, err)
 			cancel()
-			time.Sleep(2 * time.Second)
+			time.Sleep(7 * time.Second) // Fixed to match your log message
 			continue
 		}
 
