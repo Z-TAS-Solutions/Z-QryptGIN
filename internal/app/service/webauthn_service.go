@@ -13,9 +13,9 @@ func InitWebAuthn() (*webauthn.WebAuthn, error) {
 	config := &webauthn.Config{
 		RPDisplayName: "Z-QryptGIN", // Display Name for your site
 		// RPID:          "api.z-tas.com",
-		RPID:          "localhost",
+		RPID: "localhost",
 		// RPOrigins:     []string{"https://z-tas.com"},
-		RPOrigins:     []string{"http://localhost:5173"},
+		RPOrigins: []string{"http://localhost:5173"},
 
 		// Registration Settings -> Attestation: Direct
 		AttestationPreference: protocol.PreferDirectAttestation,
@@ -150,6 +150,18 @@ func (s *WebAuthnService) FinishLogin(ctx context.Context, user webauthn.User, p
 	// Verify the parsed assertion response against the session data
 	// Note: ValidateLogin expects sessionData as a value, not a pointer
 	credential, err := s.wa.ValidateLogin(user, *sessionData, parsedResponse)
+	if err != nil {
+		return nil, err
+	}
+	return credential, nil
+}
+
+// FinishDiscoverableLogin verifies the credential assertion using the discoverable credential flow.
+// Unlike FinishLogin, this does NOT compare sessionData.UserID against the user's WebAuthnID,
+// which makes it correct for both username-based and usernameless (discoverable) flows.
+// The handler is called with (rawID, userHandle) from the assertion to resolve the webauthn.User.
+func (s *WebAuthnService) FinishDiscoverableLogin(ctx context.Context, handler webauthn.DiscoverableUserHandler, parsedResponse *protocol.ParsedCredentialAssertionData, sessionData *webauthn.SessionData) (*webauthn.Credential, error) {
+	credential, err := s.wa.ValidateDiscoverableLogin(handler, *sessionData, parsedResponse)
 	if err != nil {
 		return nil, err
 	}

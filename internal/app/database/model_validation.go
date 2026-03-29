@@ -7,48 +7,50 @@ import (
 
 // --- Custom Error Definitions ---
 var (
-	ErrInvalidName           = errors.New("name cannot be empty or have special characters")
-	ErrInvalidEmail          = errors.New("invalid email format")
-	ErrInvalidPhone          = errors.New("invalid phone number format (use +94 or 07...)")
-	ErrInvalidIPv4           = errors.New("invalid IPv4 address format")
-	ErrInvalidNIC            = errors.New("invalid NIC format")
-	ErrInvalidUserID         = errors.New("invalid User ID format (USR-XXXXXX)")
-	ErrInvalidNotificationID = errors.New("invalid Notification ID format (NOT-XXXXXXXX)")
-	ErrInvalidMfaID          = errors.New("invalid MFA ID format (MFA-XXXXXXXX)")
-	ErrInvalidActivityID     = errors.New("invalid Activity ID format (ACT-XXXXXXXX)")
-	ErrInvalidPasskeyID      = errors.New("invalid Passkey ID format (PassK-XXXXXXXX)")
-	ErrInvalidSessionID      = errors.New("invalid Session ID format (SESS-XXXXXXXX)")
-	ErrInvalidStatus         = errors.New("invalid user status")
-	ErrInvalidSecurityLevel  = errors.New("invalid security level")
-	ErrInvalidNotifyType     = errors.New("invalid notification type")
-	ErrInvalidActivityType   = errors.New("invalid activity log type")
-	ErrInvalidMfaStatus      = errors.New("invalid MFA status")
-	ErrInvalidMfaDecision    = errors.New("invalid MFA decision")
-	ErrInvalidRole           = errors.New("invalid user role")
-	ErrInvalidTemplateID     = errors.New("template ID cannot be empty")
-	ErrInvalidNonce          = errors.New("invalid nonce length (expected 12 bytes)")
-	ErrInvalidCrypticData    = errors.New("cryptic data (DEK/Ciphertext) cannot be empty")
-	ErrInvalidCredentialID   = errors.New("credential ID cannot be empty")
-	ErrInvalidPublicKey      = errors.New("public key cannot be empty")
-	ErrInvalidAttestationType = errors.New("invalid attestation type")
-	ErrInvalidTransport      = errors.New("transport data cannot be empty")
-	ErrInvalidAAGUID         = errors.New("invalid AAGUID length (expected 16 bytes)")
+	ErrInvalidName              = errors.New("name cannot be empty or have special characters")
+	ErrInvalidEmail             = errors.New("invalid email format")
+	ErrInvalidPhone             = errors.New("invalid phone number format (use +94 or 07...)")
+	ErrInvalidIPv4              = errors.New("invalid IPv4 address format")
+	ErrInvalidNIC               = errors.New("invalid NIC format")
+	ErrInvalidUserID            = errors.New("invalid User ID format (USR-XXXXXX)")
+	ErrInvalidNotificationID    = errors.New("invalid Notification ID format (NOT-XXXXXXXX)")
+	ErrInvalidMfaID             = errors.New("invalid MFA ID format (MFA-XXXXXXXX)")
+	ErrInvalidActivityID        = errors.New("invalid Activity ID format (ACT-XXXXXXXX)")
+	ErrInvalidPasskeyID         = errors.New("invalid Passkey ID format (PassK-XXXXXXXX)")
+	ErrInvalidSessionID         = errors.New("invalid Session ID format (SESS-XXXXXXXX)")
+	ErrInvalidDeviceID          = errors.New("invalid Device ID format (DEVC-XXXXXX)")
+	ErrInvalidStatus            = errors.New("invalid user status")
+	ErrInvalidSecurityLevel     = errors.New("invalid security level")
+	ErrInvalidNotifyType        = errors.New("invalid notification type")
+	ErrInvalidActivityType      = errors.New("invalid activity log type")
+	ErrInvalidMfaStatus         = errors.New("invalid MFA status")
+	ErrInvalidMfaDecision       = errors.New("invalid MFA decision")
+	ErrInvalidRole              = errors.New("invalid user role")
+	ErrInvalidTemplateID        = errors.New("template ID cannot be empty")
+	ErrInvalidNonce             = errors.New("invalid nonce length (expected 12 bytes)")
+	ErrInvalidCrypticData       = errors.New("cryptic data (DEK/Ciphertext) cannot be empty")
+	ErrInvalidCredentialID      = errors.New("credential ID cannot be empty")
+	ErrInvalidPublicKey         = errors.New("public key cannot be empty")
+	ErrInvalidAttestationType   = errors.New("invalid attestation type")
+	ErrInvalidTransport         = errors.New("transport data cannot be empty")
+	ErrInvalidAAGUID            = errors.New("invalid AAGUID length (expected 16 bytes)")
 	ErrInvalidAuthenticatorName = errors.New("authenticator name cannot be empty or too long (max 100 chars)")
 )
 
 // --- Regex Pre-compilation ---
 var (
-	nameRegex           = regexp.MustCompile(`^[a-zA-Z\s]+$`)
-	emailRegex          = regexp.MustCompile(`^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$`)
-	phoneRegex          = regexp.MustCompile(`^(\+94|0)?7\d{8}$`)
-	ipv4Regex           = regexp.MustCompile(`^((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\.){3}(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)$`)
-	userCustomIDRegex   = regexp.MustCompile(`^USR-[a-zA-Z0-9]{6}$`)
-	notificationIDRegex = regexp.MustCompile(`^NOT-[a-zA-Z0-9]{8}$`)
-	mfaChallengeIDRegex = regexp.MustCompile(`^MFA-[a-zA-Z0-9]{8}$`)
-	activityLogIDRegex  = regexp.MustCompile(`^ACT-[a-zA-Z0-9]{8}$`)
-	passkeyIDRegex      = regexp.MustCompile(`^PassK-[a-zA-Z0-9]{8}$`)
-	sessionIDRegex      = regexp.MustCompile(`^SESS-[a-zA-Z0-9]{8}$`)
-	nicRegex            = regexp.MustCompile(`^([0-9]{9}[vVxX]|[0-9]{12})$`)
+	nameRegex            = regexp.MustCompile(`^[a-zA-Z\s]+$`)
+	emailRegex           = regexp.MustCompile(`^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$`)
+	phoneRegex           = regexp.MustCompile(`^(\+94|0)?7\d{8}$`)
+	ipv4Regex            = regexp.MustCompile(`^((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\.){3}(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)$`)
+	userCustomIDRegex    = regexp.MustCompile(`^USR-[a-zA-Z0-9]{6}$`)
+	notificationIDRegex  = regexp.MustCompile(`^NOT-[a-zA-Z0-9]{8}$`)
+	mfaChallengeIDRegex  = regexp.MustCompile(`^MFA-[a-zA-Z0-9]{8}$`)
+	activityLogIDRegex   = regexp.MustCompile(`^ACT-[a-zA-Z0-9]{8}$`)
+	passkeyIDRegex       = regexp.MustCompile(`^PassK-[a-zA-Z0-9]{8}$`)
+	sessionIDRegex       = regexp.MustCompile(`^SESS-[a-zA-Z0-9]{8}$`)
+	deviceIDRegex        = regexp.MustCompile(`^DEVC-[a-zA-Z0-9]{6}$`)
+	nicRegex             = regexp.MustCompile(`^([0-9]{9}[vVxX]|[0-9]{12})$`)
 	attestationTypeRegex = regexp.MustCompile(`^[a-z0-9\-]+$`)
 )
 
@@ -153,6 +155,15 @@ func (si SessionID) Validate() error {
 	return nil
 }
 
+type DeviceCustomID string
+
+func (di DeviceCustomID) Validate() error {
+	if !deviceIDRegex.MatchString(string(di)) {
+		return ErrInvalidDeviceID
+	}
+	return nil
+}
+
 type TemplateID string
 
 func (t TemplateID) Validate() error {
@@ -234,13 +245,15 @@ func (nt NotificationType) Validate() error {
 type ActivityLogType string
 
 const (
-	ActivityFailedLogin      ActivityLogType = "Failed_Login"
-	ActivityMFAApproved      ActivityLogType = "MFA_Approved"
-	ActivityMFADenied        ActivityLogType = "MFA_Denied"
-	ActivityLoginSuccess     ActivityLogType = "Login_Success"
-	ActivityLogout           ActivityLogType = "Logout"
-	ActivityPassKeyActivated ActivityLogType = "Passkey_Activated"
-	ActivitySessionRevoked   ActivityLogType = "Session_Revoked"
+	ActivityFailedLogin          ActivityLogType = "Failed_Login"
+	ActivityMFAApproved          ActivityLogType = "MFA_Approved"
+	ActivityMFADenied            ActivityLogType = "MFA_Denied"
+	ActivityLoginSuccess         ActivityLogType = "Login_Success"
+	ActivityLogout               ActivityLogType = "Logout"
+	ActivityPassKeyActivated     ActivityLogType = "Passkey_Activated"
+	ActivitySessionRevoked       ActivityLogType = "Session_Revoked"
+	ActivityAuthorizationGranted ActivityLogType = "Authorization_Granted"
+	ActivityAuthorizationDenied  ActivityLogType = "Authorization_Denied"
 )
 
 func (alt ActivityLogType) Validate() error {
@@ -321,12 +334,12 @@ func (pk WebAuthnPublicKey) Validate() error {
 type AttestationType string
 
 const (
-	AttestationNone   AttestationType = "none"
-	AttestationFidoU2F AttestationType = "fido-u2f"
-	AttestationPacked  AttestationType = "packed"
-	AttestationAndroidKey AttestationType = "android-key"
+	AttestationNone             AttestationType = "none"
+	AttestationFidoU2F          AttestationType = "fido-u2f"
+	AttestationPacked           AttestationType = "packed"
+	AttestationAndroidKey       AttestationType = "android-key"
 	AttestationAndroidSafetyNet AttestationType = "android-safetynet"
-	AttestationTPM AttestationType = "tpm"
+	AttestationTPM              AttestationType = "tpm"
 	AttestationAppleAnonymousCA AttestationType = "apple-anonymous-ca"
 )
 
@@ -350,7 +363,7 @@ func (t WebAuthnTransport) Validate() error {
 type AAGUID []byte
 
 func (a AAGUID) Validate() error {
-	if len(a) != 16 && len(a) != 0 {  // Allow 0 for optional, 16 for valid UUID
+	if len(a) != 16 && len(a) != 0 { // Allow 0 for optional, 16 for valid UUID
 		return ErrInvalidAAGUID
 	}
 	return nil

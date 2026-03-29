@@ -18,7 +18,8 @@ type RegisterBeginResponse struct {
 
 // Endpoint 2: Send Passkey Data (/register/finish)
 type RegisterFinishRequest struct {
-	SessionToken string `header:"X-Session-Token" binding:"required"`
+	SessionToken      string `header:"X-Session-Token" binding:"required"`
+	AuthenticatorName string `header:"X-Authenticator-Name"`
 	// Note: The HTTP body is the raw JSON from the WebAuthn browser API.
 	// You will parse it using `protocol.ParseCredentialCreationResponseponseBody(r.Body)`
 }

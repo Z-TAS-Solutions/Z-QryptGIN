@@ -20,6 +20,7 @@ type User struct {
 	Status        UserStatus        `gorm:"default:Active"`
 	SecurityLevel UserSecurityLevel `gorm:"default:Low"`
 	MFAStatus     bool
+	LastLogin     *time.Time `gorm:"index"` // Useful for dashboard sorting/filtering
 	//Relationships
 	Notifications  []Notification       `gorm:"foreignKey:UserID"`
 	MfaChallenges  []MfaChallenge       `gorm:"foreignKey:UserID"`
@@ -71,6 +72,7 @@ type ActivityLog struct {
 	UserID     uint
 	ActivityNo ActivityID `gorm:"uniqueIndex"`
 	Title      string
+	Log        string
 	Device     string
 	TimeLabel  time.Time
 	IsCritical bool
@@ -80,7 +82,8 @@ type ActivityLog struct {
 type Session struct {
 	gorm.Model
 	UserID     uint
-	SessionNo  SessionID `gorm:"uniqueIndex"`
+	SessionNo  SessionID      `gorm:"uniqueIndex"`
+	DeviceID   DeviceCustomID `gorm:"index"`
 	DeviceName string
 	Location   string
 	IpAddress  IPV4
@@ -182,6 +185,9 @@ func (a *ActivityLog) BeforeSave(tx *gorm.DB) error {
 
 func (s *Session) BeforeSave(tx *gorm.DB) error {
 	if err := s.SessionNo.Validate(); err != nil {
+		return err
+	}
+	if err := s.DeviceID.Validate(); err != nil {
 		return err
 	}
 	if err := s.IpAddress.Validate(); err != nil {

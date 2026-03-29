@@ -1,3 +1,16 @@
+*.exe
+*.out
+*.app
+
+*.test
+*.prof
+*.log
+
+.env
+
+.DS_Store
+Thumbs.db
+
 #binaries from programs and plugins
 *.exit
 *.exe~
@@ -8,6 +21,11 @@
 
 # Test binary, build with 'go tes -c'
 *.test
+api.exe
+bin/app
+bin\app
+bin/app.exe
+bin\app.exe
 
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
@@ -29,3 +47,7 @@ configs/*.env
 configs/*.json
 configs/dev.env
 configs\dev.env
+
+#Documentation files
+docs/*.md
+docs\*.md

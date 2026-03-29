@@ -81,8 +81,9 @@ func (s *jwtService) GenerateToken(userID uint, role string, session *dto.Sessio
 
 	// Store session in Redis with the JTI as key
 	if session != nil {
-		// Update session with JTI
+		// Update session with JTI and role (CRITICAL for cross-validation)
 		session.JTI = jtiString
+		session.Role = role  // ← CRITICAL: Store role in session cache for ValidateRoleConsistency check
 		session.ExpiresAt = exp
 		session.IsActive = true
 
