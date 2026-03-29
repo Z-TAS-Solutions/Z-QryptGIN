@@ -1,6 +1,6 @@
 module github.com/Z-TAS-Solutions/Z-QryptGIN
 
-go 1.25.0
+go 1.26.0
 
 require (
 	github.com/Microsoft/go-winio v0.6.2
