@@ -22,4 +22,4 @@ jobs:
           host: ${{ secrets.SERVER_IP }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
-          script: /home/Z-TAS/Z-QryptGIN/deploy.sh
+          script: /home/Z-TAS/Z-QcryptGIN/deploy.sh
