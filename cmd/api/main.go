@@ -15,9 +15,12 @@ import (
 	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/app/ochestrator/znode_engine"
 	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/app/repository"
 	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/app/service"
+	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/pkg/zcoreproto"
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 func main() {
@@ -85,8 +88,26 @@ func main() {
 	webauthnSvc := service.NewWebAuthnService(wa)
 	webauthnSessionCache := cache.NewWebAuthnSessionCache(redisClient)
 
-	// Create user registration service with WebAuthn support for complete registration flow
-	userRegistrationSvc := service.NewUserRegistrationServiceWithWebAuthn(userRepo, credentialRepo, redisClient, emailSvc, webauthnSvc, db)
+	// 7.7 Initialize gRPC Client for ZCoreHub (for node enrollment)
+	fmt.Println("Connecting to ZCoreHub gRPC server...")
+	grpcHubConn, err := grpc.NewClient("localhost:50051", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		logger.Error().Err(err).Msg("Failed to connect to gRPC Hub. Enrollment features will be disabled.")
+	} else {
+		defer grpcHubConn.Close()
+	}
+	znodeClient := zcoreproto.NewZNodeControllerClient(grpcHubConn)
+
+	// Create user registration service with WebAuthn support and gRPC Hub integration
+	userRegistrationSvc := service.NewUserRegistrationServiceWithWebAuthn(
+		userRepo,
+		credentialRepo,
+		redisClient,
+		emailSvc,
+		webauthnSvc,
+		db,
+		znodeClient,
+	)
 
 	fmt.Println("Initializing JWT Service...")
 	// 7.6 Initialize JWT Service with EdDSA signing (hybrid stateless + stateful via Redis)

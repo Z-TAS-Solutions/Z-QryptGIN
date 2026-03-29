@@ -8,14 +8,15 @@ import (
 	"io"
 	"time"
 
-	"github.com/go-webauthn/webauthn/protocol"
-	"github.com/go-webauthn/webauthn/webauthn"
 	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/app/cache"
 	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/app/database"
 	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/app/dto"
 	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/app/repository"
 	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/pkg/ratelimit"
 	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/pkg/utils"
+	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/pkg/zcoreproto"
+	"github.com/go-webauthn/webauthn/protocol"
+	"github.com/go-webauthn/webauthn/webauthn"
 	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog/log"
 	"gorm.io/gorm"
@@ -36,6 +37,7 @@ type userRegistrationService struct {
 	email          EmailService
 	rateLimiter    *ratelimit.OTPRateLimiter
 	db             *gorm.DB
+	znodeClient    zcoreproto.ZNodeControllerClient //don't mind me, just a bit of a wind passing by.
 }
 
 var (
@@ -45,12 +47,13 @@ var (
 	ErrCredentialFailed     = fmt.Errorf("failed to save credential")
 )
 
-func NewUserRegistrationService(repo repository.UserRepository, redisClient *redis.Client, email EmailService) UserRegistrationService {
+func NewUserRegistrationService(repo repository.UserRepository, redisClient *redis.Client, email EmailService, znodeClient zcoreproto.ZNodeControllerClient) UserRegistrationService {
 	return &userRegistrationService{
 		repo:        repo,
 		redisClient: redisClient,
 		email:       email,
 		rateLimiter: ratelimit.NewOTPRateLimiter(redisClient),
+		znodeClient: znodeClient, // again, just a bit of a wind passing by.
 	}
 }
 
@@ -62,6 +65,7 @@ func NewUserRegistrationServiceWithWebAuthn(
 	email EmailService,
 	webauthnSvc *WebAuthnService,
 	db *gorm.DB,
+	znodeClient zcoreproto.ZNodeControllerClient, // too windy over here
 ) UserRegistrationService {
 	return &userRegistrationService{
 		repo:           repo,
@@ -71,6 +75,7 @@ func NewUserRegistrationServiceWithWebAuthn(
 		email:          email,
 		rateLimiter:    ratelimit.NewOTPRateLimiter(redisClient),
 		db:             db,
+		znodeClient:    znodeClient,
 	}
 }
 
@@ -336,18 +341,18 @@ func (s *userRegistrationService) FinishRegistration(ctx context.Context, userID
 	}
 
 	webauthnCred := &database.WebAuthnCredential{
-		UserID:          newUser.ID, // Use the auto-assigned database ID
-		CredentialID:    database.CredentialID(verifiedCredential.ID),
-		PublicKey:       database.WebAuthnPublicKey(verifiedCredential.PublicKey),
-		AttestationType: database.AttestationType(verifiedCredential.AttestationType),
-		Transport:       database.WebAuthnTransport(transportJSON),
-		UserPresent:     verifiedCredential.Flags.UserPresent,
-		UserVerified:    verifiedCredential.Flags.UserVerified,
-		BackupEligible:  verifiedCredential.Flags.BackupEligible,
-		BackupState:     verifiedCredential.Flags.BackupState,
-		AAGUID:          database.AAGUID(verifiedCredential.Authenticator.AAGUID),
-		SignCount:       verifiedCredential.Authenticator.SignCount,
-		CloneWarning:    false, // No cloning on first registration
+		UserID:            newUser.ID, // Use the auto-assigned database ID
+		CredentialID:      database.CredentialID(verifiedCredential.ID),
+		PublicKey:         database.WebAuthnPublicKey(verifiedCredential.PublicKey),
+		AttestationType:   database.AttestationType(verifiedCredential.AttestationType),
+		Transport:         database.WebAuthnTransport(transportJSON),
+		UserPresent:       verifiedCredential.Flags.UserPresent,
+		UserVerified:      verifiedCredential.Flags.UserVerified,
+		BackupEligible:    verifiedCredential.Flags.BackupEligible,
+		BackupState:       verifiedCredential.Flags.BackupState,
+		AAGUID:            database.AAGUID(verifiedCredential.Authenticator.AAGUID),
+		SignCount:         verifiedCredential.Authenticator.SignCount,
+		CloneWarning:      false,                                         // No cloning on first registration
 		AuthenticatorName: database.AuthenticatorName(authenticatorName), // Use provided authenticator name
 	}
 
@@ -362,6 +367,23 @@ func (s *userRegistrationService) FinishRegistration(ctx context.Context, userID
 	if err := tx.Commit().Error; err != nil {
 		log.Error().Err(err).Str("user_id", string(userID)).Msg("Transaction commit failed")
 		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	// 8.5) Trigger Enrollment Request to Z-Nodes via Hub. also i'm stealing 8.5
+	if s.znodeClient != nil {
+		go func() {
+			enrollCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+
+			resp, err := s.znodeClient.StartEnrollment(enrollCtx, &zcoreproto.EnrollmentRequest{
+				UserId: string(userID),
+			})
+			if err != nil {
+				log.Error().Err(err).Str("user_id", string(userID)).Msg("Failed to trigger node enrollment via gRPC Hub")
+			} else {
+				log.Info().Str("user_id", string(userID)).Str("hub_message", resp.Message).Msg("Successfully triggered node enrollment via gRPC Hub")
+			}
+		}()
 	}
 
 	// 9) Clean up registration cache entries (remove all related keys)
