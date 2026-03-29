@@ -129,21 +129,10 @@ func main() {
 
 	// User Routes
 	user := router.Group("/api/v1/user")
+	user.GET("/notifications")
 	{
 		auth := user.Group("/auth")
 		{
-			register := auth.Group("/register")
-			{
-				register.POST("/options", nil) // userAuthHandler.RegisterOptions
-				register.POST("/verify", nil)  // userAuthHandler.RegisterVerify
-			}
-
-			login := auth.Group("/login")
-			{
-				login.POST("/options", nil) // userAuthHandler.LoginOptions
-				login.POST("/verify", nil)  // userAuthHandler.LoginVerify
-			}
-
 			mfa := auth.Group("/mfa")
 			{
 				mfa.POST("/send", nil)    // userMfaHandler.Send

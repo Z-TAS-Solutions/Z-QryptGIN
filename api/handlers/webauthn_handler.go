@@ -288,7 +288,7 @@ func (h *WebAuthnHandler) RegisterFinish(c *gin.Context) {
 		ID:           uuid.New().String(),
 		UserID:       registeredUser.ID,
 		DeviceName:   utils.ParseDeviceName(userAgent),
-		DeviceID:     fmt.Sprintf("%s-registration", uuid.New().String()),
+		DeviceID:     utils.GenerateDeviceID(),
 		IPAddress:    utils.GetClientIP(c),
 		UserAgent:    userAgent,
 		IsActive:     true,
@@ -550,16 +550,12 @@ func (h *WebAuthnHandler) LoginFinish(c *gin.Context) {
 	}
 
 	// 8. Create session object for Redis session tracking
-	deviceID := string(resolvedCredential.AuthenticatorName)
-	if deviceID == "" {
-		deviceID = fmt.Sprintf("device-%d", resolvedCredential.ID)
-	}
 	userAgent := c.GetHeader("User-Agent")
 	sessionInfo := &dto.Session{
 		ID:           uuid.New().String(),
 		UserID:       authenticatedUser.ID,
 		DeviceName:   utils.ParseDeviceName(userAgent),
-		DeviceID:     deviceID,
+		DeviceID:     utils.GenerateDeviceID(),
 		IPAddress:    utils.GetClientIP(c),
 		UserAgent:    userAgent,
 		IsActive:     true,

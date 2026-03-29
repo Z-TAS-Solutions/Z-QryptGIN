@@ -81,6 +81,7 @@ type Session struct {
 	gorm.Model
 	UserID     uint
 	SessionNo  SessionID `gorm:"uniqueIndex"`
+	DeviceID   DeviceCustomID `gorm:"index"`
 	DeviceName string
 	Location   string
 	IpAddress  IPV4
@@ -182,6 +183,9 @@ func (a *ActivityLog) BeforeSave(tx *gorm.DB) error {
 
 func (s *Session) BeforeSave(tx *gorm.DB) error {
 	if err := s.SessionNo.Validate(); err != nil {
+		return err
+	}
+	if err := s.DeviceID.Validate(); err != nil {
 		return err
 	}
 	if err := s.IpAddress.Validate(); err != nil {
