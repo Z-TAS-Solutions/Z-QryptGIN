@@ -2,9 +2,11 @@ package zcore
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"log"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/app/service/zpi_client"
@@ -35,6 +37,10 @@ type ZCoreService struct {
 
 	EventChannel chan ZEvent
 	sessionCount int
+
+	Mu                sync.Mutex
+	EnrollmentPending bool
+	PendingUserID     string
 }
 
 func (z *ZCoreService) HandleFusionSession(tofEventStream zscanproto.ZPiController_ToFEventStreamClient) {
@@ -87,6 +93,77 @@ func (z *ZCoreService) HandleFusionSession(tofEventStream zscanproto.ZPiControll
 			z.HandleFusionMatch(zFusionResponse, tofEventStream)
 
 		}
+	}
+}
+
+func (z *ZCoreService) HandleEnrollSession(userID string, tofEventStream zscanproto.ZPiController_ToFEventStreamClient) {
+	log.Printf("[ZCore] Initializing ZFusion Enrollment for User: %s", userID)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 25*time.Second)
+	defer cancel()
+
+	zFusionStream, err := z.ZFusion.FusionCapture(ctx, &zfusionproto.ZFusionRequest{
+		SessionId: "ENROLL_" + strconv.Itoa(z.sessionCount) + "_" + strconv.FormatInt(time.Now().Unix(), 10),
+	})
+
+	if err != nil {
+		log.Println("[Error] Could not start Fusion Capture for Enrollment:", err)
+		return
+	}
+
+	for {
+		zFusionResponse, err := zFusionStream.Recv()
+		if err == io.EOF {
+			log.Println("[ZFusion] Enrollment Session Closed.")
+			break
+		}
+		if err != nil {
+			log.Printf("[Error] Fusion Enrollment Stream interrupted: %v", err)
+			break
+		}
+
+		switch zFusionResponse.CompletionPhase {
+		case zfusionproto.ZFusionResponse_PHASE_ROI:
+			log.Println("[ZFusion] ROI Phase: Hand Detected for Enrollment.")
+			tofEventStream.Send(&zscanproto.ToFEvent{Type: zscanproto.ToFEvent_PENDING})
+
+			if zFusionResponse.StatusMessage == "ROI_FAIL" {
+				log.Println("[Warning] Failed to lock ROI for Enrollment.")
+				tofEventStream.Send(&zscanproto.ToFEvent{
+					Type:      zscanproto.ToFEvent_RESULT,
+					LedStatus: zscanproto.LEDStatus_FAILED,
+				})
+				return
+			}
+
+		case zfusionproto.ZFusionResponse_PHASE_FUSION:
+			log.Printf("[ZFusion] Fusion Phase: Extracting Bitstream for User %s...", userID)
+			z.HandleEnrollStore(userID, zFusionResponse, tofEventStream)
+		}
+	}
+}
+
+func (z *ZCoreService) HandleEnrollStore(userID string, zFusionResponse *zfusionproto.ZFusionResponse, tofEventStream zscanproto.ZPiController_ToFEventStreamClient) {
+	if z.ZIPCClient != nil {
+		storeCtx, storeCancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer storeCancel()
+
+		templateID := fmt.Sprintf("tmpl_%d", time.Now().Unix())
+		success, err := z.ZIPCClient.StoreEncryptedTemplate(storeCtx, userID, templateID, "fusion", zFusionResponse.FusionBitstream)
+
+		var ledStatus zscanproto.LEDStatus
+		if err != nil || !success {
+			log.Printf("[ZCore] Enrollment FAILED for User %s: %v", userID, err)
+			ledStatus = zscanproto.LEDStatus_FAILED
+		} else {
+			log.Printf("[ZCore] Enrollment SUCCESS for User %s (TemplateID: %s)", userID, templateID)
+			ledStatus = zscanproto.LEDStatus_SUCCESS
+		}
+
+		tofEventStream.Send(&zscanproto.ToFEvent{
+			Type:      zscanproto.ToFEvent_RESULT,
+			LedStatus: ledStatus,
+		})
 	}
 }
 

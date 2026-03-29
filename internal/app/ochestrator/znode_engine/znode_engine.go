@@ -40,13 +40,35 @@ func RunZCoreWHub(nodeID, nodeAddr, hubAddr string) {
 					continue
 				}
 
-				go ZCoreService.HandleFusionSession(stream)
+				ZCoreService.Mu.Lock()
+				isEnrollment := ZCoreService.EnrollmentPending
+				userID := ZCoreService.PendingUserID
+				if isEnrollment {
+					ZCoreService.EnrollmentPending = false
+				}
+				ZCoreService.Mu.Unlock()
+
+				if isEnrollment {
+					go ZCoreService.HandleEnrollSession(userID, stream)
+				} else {
+					go ZCoreService.HandleFusionSession(stream)
+				}
 
 			case zcore.EventType(1):
 				log.Println("Sensor lost! Attempting recovery...")
 
 			case zcore.EventType(2):
-				log.Println("Received Command From ZCoreHub")
+				userID, ok := event.Payload.(string)
+				if !ok {
+					log.Println("Error: Enrollment payload was not a string!")
+					continue
+				}
+				log.Printf("Received Enrollment Command for User: %s", userID)
+
+				ZCoreService.Mu.Lock()
+				ZCoreService.EnrollmentPending = true
+				ZCoreService.PendingUserID = userID
+				ZCoreService.Mu.Unlock()
 			}
 
 		default:
