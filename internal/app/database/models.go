@@ -71,6 +71,7 @@ type ActivityLog struct {
 	UserID     uint
 	ActivityNo ActivityID `gorm:"uniqueIndex"`
 	Title      string
+	Log        string
 	Device     string
 	TimeLabel  time.Time
 	IsCritical bool
@@ -80,7 +81,7 @@ type ActivityLog struct {
 type Session struct {
 	gorm.Model
 	UserID     uint
-	SessionNo  SessionID `gorm:"uniqueIndex"`
+	SessionNo  SessionID      `gorm:"uniqueIndex"`
 	DeviceID   DeviceCustomID `gorm:"index"`
 	DeviceName string
 	Location   string

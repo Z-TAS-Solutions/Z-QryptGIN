@@ -11,12 +11,13 @@ import (
 
 // DashboardRepository handles database queries for admin dashboard analytics
 type DashboardRepository interface {
-	// GetAuthTrendsByInterval fetches authentication activity trends aggregated over a specified interval
+	// GetAuthTrendsByInterval fetches authorization activity trends aggregated over a specified interval
+	// Tracks Authorization_Granted (success) vs Authorization_Denied (failure) attempts
 	// Supports intervals: "minute" or "hour"
-	// Returns time-series data points with success and failure counts
+	// Returns time-series data points with granted and denied counts
 	GetAuthTrendsByInterval(ctx context.Context, interval string, lastHours int) ([]dto.AuthTrendDataPoint, error)
 
-	// GetAuthTrendsMetrics returns aggregated authentication metrics for a summary view
+	// GetAuthTrendsMetrics returns aggregated authorization metrics for a summary view
 	GetAuthTrendsMetrics(ctx context.Context, lastHours int) (*dto.DashboardMetrics, error)
 }
 
@@ -29,63 +30,58 @@ func NewDashboardRepository(db *gorm.DB) DashboardRepository {
 	return &dashboardRepository{db: db}
 }
 
-// GetAuthTrendsByInterval fetches authentication trends aggregated by the specified interval
-// Fetches activity logs for successful and failed logins over the last N hours
+// GetAuthTrendsByInterval fetches authorization trends aggregated by the specified interval
+// Uses proper GORM queries to fetch activity logs, then aggregates in Go code
+// Tracks: Authorization_Granted (success) and Authorization_Denied (failure)
 func (r *dashboardRepository) GetAuthTrendsByInterval(ctx context.Context, interval string, lastHours int) ([]dto.AuthTrendDataPoint, error) {
-	var results []struct {
-		TimeBucket time.Time
-		Type       string
-		Count      int64
-	}
-
-	// Determine the PostgreSQL date_trunc interval format
-	intervalFormat := interval
+	// Validate interval
 	if interval != "minute" && interval != "hour" {
-		intervalFormat = "hour" // Default to hour if invalid
+		interval = "hour"
 	}
 
-	// Query: Aggregate activity logs by time bucket, counting successes and failures separately
-	// DATE_TRUNC groups logs by the specified interval (minute or hour)
-	query := `
-		SELECT
-			DATE_TRUNC(?, activity_logs.created_at) AS time_bucket,
-			activity_logs.type,
-			COUNT(*) AS count
-		FROM activity_logs
-		WHERE activity_logs.created_at >= NOW() - INTERVAL '1 hour' * ?
-			AND activity_logs.type IN (?, ?)
-		GROUP BY DATE_TRUNC(?, activity_logs.created_at), activity_logs.type
-		ORDER BY time_bucket ASC
-	`
+	// Calculate cutoff time
+	cutoffTime := time.Now().UTC().Add(-time.Duration(lastHours) * time.Hour)
 
-	if err := r.db.WithContext(ctx).Raw(
-		query,
-		intervalFormat,
-		lastHours,
-		string(database.ActivityLoginSuccess),
-		string(database.ActivityFailedLogin),
-		intervalFormat,
-	).Scan(&results).Error; err != nil {
+	// Fetch all activity logs for the specified time period using pure GORM
+	// Filter for Authorization_Granted and Authorization_Denied types only
+	var activityLogs []database.ActivityLog
+	err := r.db.WithContext(ctx).
+		Where("created_at >= ?", cutoffTime).
+		Where("type IN (?, ?)", database.ActivityAuthorizationGranted, database.ActivityAuthorizationDenied).
+		Order("created_at ASC").
+		Find(&activityLogs).Error
+
+	if err != nil {
 		return nil, err
 	}
 
-	// Transform flat results into time-series data points
-	// Use a map to group by timestamp
+	// Aggregate in Go by truncating timestamps to the specified interval
+	// Use a map to group by timestamp bucket and activity type
 	trendMap := make(map[time.Time]*dto.AuthTrendDataPoint)
 
-	for _, result := range results {
-		if _, exists := trendMap[result.TimeBucket]; !exists {
-			trendMap[result.TimeBucket] = &dto.AuthTrendDataPoint{
-				Timestamp:    result.TimeBucket,
+	for _, log := range activityLogs {
+		// Truncate timestamp to interval (minute or hour)
+		var timeBucket time.Time
+		if interval == "minute" {
+			timeBucket = log.CreatedAt.UTC().Truncate(time.Minute)
+		} else {
+			timeBucket = log.CreatedAt.UTC().Truncate(time.Hour)
+		}
+
+		// Initialize the bucket if it doesn't exist
+		if _, exists := trendMap[timeBucket]; !exists {
+			trendMap[timeBucket] = &dto.AuthTrendDataPoint{
+				Timestamp:    timeBucket,
 				SuccessCount: 0,
 				FailureCount: 0,
 			}
 		}
 
-		if result.Type == string(database.ActivityLoginSuccess) {
-			trendMap[result.TimeBucket].SuccessCount = result.Count
-		} else if result.Type == string(database.ActivityFailedLogin) {
-			trendMap[result.TimeBucket].FailureCount = result.Count
+		// Increment count based on activity type
+		if log.Type == database.ActivityAuthorizationGranted {
+			trendMap[timeBucket].SuccessCount++
+		} else if log.Type == database.ActivityAuthorizationDenied {
+			trendMap[timeBucket].FailureCount++
 		}
 	}
 
@@ -113,25 +109,28 @@ func (r *dashboardRepository) GetAuthTrendsByInterval(ctx context.Context, inter
 	return trends, nil
 }
 
-// GetAuthTrendsMetrics returns aggregated metrics for authentication trends
+// GetAuthTrendsMetrics returns aggregated metrics for authorization trends
 func (r *dashboardRepository) GetAuthTrendsMetrics(ctx context.Context, lastHours int) (*dto.DashboardMetrics, error) {
-	var successCount, failureCount int64
+	var grantedCount, deniedCount int64
 
-	// Count total successful logins in the period
+	// Calculate cutoff time using proper Go time operations (not SQL)
+	cutoffTime := time.Now().UTC().Add(-time.Duration(lastHours) * time.Hour)
+
+	// Count total authorization grants in the period using pure GORM
 	if err := r.db.WithContext(ctx).
-		Where("created_at >= NOW() - INTERVAL '1 hour' * ?", lastHours).
-		Where("type = ?", string(database.ActivityLoginSuccess)).
+		Where("created_at >= ?", cutoffTime).
+		Where("type = ?", database.ActivityAuthorizationGranted).
 		Model(&database.ActivityLog{}).
-		Count(&successCount).Error; err != nil {
+		Count(&grantedCount).Error; err != nil {
 		return nil, err
 	}
 
-	// Count total failed logins in the period
+	// Count total authorization denials in the period using pure GORM
 	if err := r.db.WithContext(ctx).
-		Where("created_at >= NOW() - INTERVAL '1 hour' * ?", lastHours).
-		Where("type = ?", string(database.ActivityFailedLogin)).
+		Where("created_at >= ?", cutoffTime).
+		Where("type = ?", database.ActivityAuthorizationDenied).
 		Model(&database.ActivityLog{}).
-		Count(&failureCount).Error; err != nil {
+		Count(&deniedCount).Error; err != nil {
 		return nil, err
 	}
 
@@ -146,8 +145,8 @@ func (r *dashboardRepository) GetAuthTrendsMetrics(ctx context.Context, lastHour
 	var peakSuccessTime, peakFailureTime time.Time
 
 	if len(trends) > 0 {
-		avgSuccess = float64(successCount) / float64(len(trends))
-		avgFailure = float64(failureCount) / float64(len(trends))
+		avgSuccess = float64(grantedCount) / float64(len(trends))
+		avgFailure = float64(deniedCount) / float64(len(trends))
 
 		for _, trend := range trends {
 			if trend.SuccessCount > peakSuccess {
@@ -162,8 +161,8 @@ func (r *dashboardRepository) GetAuthTrendsMetrics(ctx context.Context, lastHour
 	}
 
 	return &dto.DashboardMetrics{
-		TotalSuccessfulAuthentications: successCount,
-		TotalFailedAuthentications:     failureCount,
+		TotalSuccessfulAuthentications: grantedCount,
+		TotalFailedAuthentications:     deniedCount,
 		AverageSuccessPerInterval:      avgSuccess,
 		AverageFailurePerInterval:      avgFailure,
 		PeakSuccessCount:               peakSuccess,
