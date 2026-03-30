@@ -216,6 +216,7 @@ func NewZNodeControllerClient(cc grpc.ClientConnInterface) ZNodeControllerClient
 }
 
 func (c *zNodeControllerClient) StartEnrollment(ctx context.Context, in *EnrollmentRequest, opts ...grpc.CallOption) (*EnrollmentResponse, error) {
+	fmt.Println("#################### We are in the gRPC client stub for StartEnrollment! ########################")
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(EnrollmentResponse)
 	err := c.cc.Invoke(ctx, ZNodeController_StartEnrollment_FullMethodName, in, out, cOpts...)
