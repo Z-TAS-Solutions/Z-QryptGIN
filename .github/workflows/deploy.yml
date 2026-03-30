@@ -8,10 +8,10 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment: CI/CD   # <-- this makes environment secrets available
+    environment: CI/CD   # DO NOT TOUCH THIS!!!!! nobody goes in, nobody comes out.
 
     steps:
-      # Step 1: Checkout repo (optional, not needed for deploy.sh, but good practice)
+      # Step 1: Checkout repo 
       - name: Checkout repository
         uses: actions/checkout@v3
 
