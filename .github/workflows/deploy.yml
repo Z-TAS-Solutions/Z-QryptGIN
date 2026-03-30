@@ -2,24 +2,44 @@ name: Deploy Z-QryptGIN API
 
 on:
   push:
-    branches:
-      - main  # change if you want a different branch
+    branches: [ main ]
 
 jobs:
-  deploy:
+  build-and-deploy:
     runs-on: ubuntu-latest
-    environment: CI/CD   # DO NOT TOUCH THIS!!!!! nobody goes in, nobody comes out.
-
+    environment: CI/CD
+    
     steps:
-      # Step 1: Checkout repo 
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      # Step 2: SSH to your server and run deploy.sh
-      - name: Run deploy script on server
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+
+      - name: Build Binary for Linux
+        run: |
+          # CGO_ENABLED=0 creates a static binary that works on any Linux distro
+          # -ldflags="-s -w" reduces the binary size significantly
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o api cmd/api/main.go
+
+      - name: Upload Binary to Server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          source: "api"
+          target: "/home/Z-TAS/Z-QcryptGIN/"
+
+      - name: Restart Service via SSH
         uses: appleboy/ssh-action@v0.1.9
         with:
           host: ${{ secrets.SERVER_IP }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
-          script: /home/Z-TAS/Z-QcryptGIN/deploy.sh
+          script: |
+            # Ensure permissions are correct and restart
+            chmod +x /home/Z-TAS/Z-QcryptGIN/api
+            sudo systemctl restart api

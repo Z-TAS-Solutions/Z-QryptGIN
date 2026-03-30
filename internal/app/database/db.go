@@ -3,11 +3,14 @@ package database
 import (
 	"time"
 
-	"gorm.io/driver/postgres" 
+	"fmt"
+
+	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 
 func NewDatabaseConnection(dsn string) (*gorm.DB, error) {
+	fmt.Println("Attempting to connect to PostgreSQL database...")
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
 		return nil, err
