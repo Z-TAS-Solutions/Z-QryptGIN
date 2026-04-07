@@ -39,8 +39,9 @@ type ActiveSessionResponse struct {
 
 // GetActiveSessionsResponseData is the data wrapper for the get active sessions endpoint
 type GetActiveSessionsResponseData struct {
-	Sessions   []ActiveSessionResponse `json:"sessions"`
-	Pagination PaginationInfo          `json:"pagination"`
+	Sessions []ActiveSessionResponse `json:"sessions"`
+	// Pagination PaginationInfo          `json:"pagination"`
+	Pagination PaginationInfo `json:"pagination"`
 }
 
 // LogoutOthersResponseData is the data wrapper for the logout others endpoint
