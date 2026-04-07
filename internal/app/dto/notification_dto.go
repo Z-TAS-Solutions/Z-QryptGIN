@@ -1,6 +1,7 @@
 package dto
 
-import "time"
+// NotificationStatus represents the read status of a notification
+type NotificationStatus string
 
 const (
 	NotificationStatusRead   NotificationStatus = "read"
@@ -30,21 +31,38 @@ type NotificationsResponseData struct {
 	Pagination    PaginationInfo         `json:"pagination"`
 }
 
-type MarkAllReadRequest struct {
+// GetNotificationsResponse is the complete response for the notifications endpoint
+type GetNotificationsResponse struct {
+	Message string                    `json:"message"`
+	Data    NotificationsResponseData `json:"data"`
 }
 
-type MarkAllReadResponse struct {
-	Success  bool   `json:"success"`
-	Message  string `json:"message"`
-	Updated  int    `json:"updated"`
+// FetchNotificationsRequest holds query parameters for fetching notifications
+type FetchNotificationsRequest struct {
+	Limit      int    `form:"limit,default=20" binding:"min=1,max=100"`
+	Offset     int    `form:"offset,default=0" binding:"min=0"`
+	UnreadOnly bool   `form:"unread_only,default=false"`
+	SortOrder  string `form:"sort_order,default=desc" binding:"oneof=asc desc"`
 }
 
+// UpdateNotificationStatusRequest holds the update request for notification status
 type UpdateNotificationStatusRequest struct {
-	Status string `json:"status"` // "read", "archived"
+	Status string `json:"status" binding:"required,oneof=read unread"`
 }
 
+// UpdateNotificationStatusResponse is the response for updating notification status
 type UpdateNotificationStatusResponse struct {
-	Success bool              `json:"success"`
-	Message string            `json:"message"`
-	Data    NotificationResponse `json:"data"`
+	Message string `json:"message"`
+	Data    struct {
+		NotificationID string `json:"notification_id"`
+		Status         string `json:"status"`
+	} `json:"data"`
+}
+
+// MarkAllAsReadResponse is the response for marking all notifications as read
+type MarkAllAsReadResponse struct {
+	Message string `json:"message"`
+	Data    struct {
+		UpdatedCount int64 `json:"updated_count"`
+	} `json:"data"`
 }
