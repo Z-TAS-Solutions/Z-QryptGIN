@@ -8,6 +8,14 @@ const (
 	NotificationStatusUnread NotificationStatus = "unread"
 )
 
+// PaginationInfo contains pagination metadata
+type PaginationInfo struct {
+	Limit    int  `json:"limit"`
+	Offset   int  `json:"offset"`
+	Returned int  `json:"returned"`
+	HasMore  bool `json:"has_more"`
+}
+
 // NotificationResponse represents a single notification in the response
 type NotificationResponse struct {
 	ID        string             `json:"id"`
@@ -15,14 +23,6 @@ type NotificationResponse struct {
 	Details   string             `json:"details"`
 	Timestamp int64              `json:"timestamp"` // Unix milliseconds
 	Status    NotificationStatus `json:"status"`
-}
-
-// PaginationInfo contains pagination metadata
-type PaginationInfo struct {
-	Limit    int  `json:"limit"`
-	Offset   int  `json:"offset"`
-	Returned int  `json:"returned"`
-	HasMore  bool `json:"has_more"`
 }
 
 // NotificationsResponseData contains the response payload
