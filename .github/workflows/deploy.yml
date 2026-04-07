@@ -24,7 +24,7 @@ jobs:
         run: |
           # CGO_ENABLED=0 creates a static binary that works on any Linux distro
           # -ldflags="-s -w" reduces the binary size significantly
-          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o api cmd/api/main.go
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o zqrypt-api cmd/api/main.go
 
       - name: Upload Binary to Server
         uses: appleboy/scp-action@v0.1.7
@@ -32,7 +32,7 @@ jobs:
           host: ${{ secrets.SERVER_IP }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
-          source: "api"
+          source: "zqrypt-api"
           target: "/home/Z-TAS/Z-QcryptGIN/"
 
       - name: Restart Service via SSH
