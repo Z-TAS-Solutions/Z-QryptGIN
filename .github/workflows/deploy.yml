@@ -16,9 +16,11 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.25'
+          go-version: '1.26'
 
       - name: Build Binary for Linux
+        env: 
+          GOTOOLCHAIN: local
         run: |
           # CGO_ENABLED=0 creates a static binary that works on any Linux distro
           # -ldflags="-s -w" reduces the binary size significantly
