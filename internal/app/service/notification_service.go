@@ -1,110 +1,105 @@
 package service
 
 import (
+	"context"
+	"fmt"
+	"time"
+
 	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/app/dto"
-	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/app/repository"
+	"github.com/redis/go-redis/v9"
+	"github.com/rs/zerolog/log"
 )
 
 type NotificationService interface {
-	GetNotificationsByUserID(userID uint, limit int, offset int, unreadOnly bool, sortOrder string) (*dto.GetNotificationsResponse, error)
-	UpdateNotificationStatus(userID uint, notificationID string, status string) (*dto.UpdateNotificationStatusResponse, error)
-	MarkAllAsRead(userID uint) (*dto.MarkAllAsReadResponse, error)
+	FetchNotifications(ctx context.Context, userID string) (*dto.FetchNotificationsResponse, error)
+	MarkAllRead(ctx context.Context, userID string) (*dto.MarkAllReadResponse, error)
+	UpdateNotificationStatus(ctx context.Context, userID, notificationID string, req dto.UpdateNotificationStatusRequest) (*dto.UpdateNotificationStatusResponse, error)
 }
 
 type notificationService struct {
-	notificationRepo repository.NotificationRepository
+	redisClient *redis.Client
 }
 
-func NewNotificationService(notificationRepo repository.NotificationRepository) NotificationService {
+func NewNotificationService(redisClient *redis.Client) NotificationService {
 	return &notificationService{
-		notificationRepo: notificationRepo,
+		redisClient: redisClient,
 	}
 }
 
-// GetNotificationsByUserID retrieves notifications for a user with filtering, pagination, and sorting
-func (s *notificationService) GetNotificationsByUserID(userID uint, limit int, offset int, unreadOnly bool, sortOrder string) (*dto.GetNotificationsResponse, error) {
-	// Fetch notifications from repository
-	notifications, totalCount, err := s.notificationRepo.GetNotificationsByUserID(userID, limit, offset, unreadOnly, sortOrder)
-	if err != nil {
-		return nil, err
-	}
+func (s *notificationService) FetchNotifications(ctx context.Context, userID string) (*dto.FetchNotificationsResponse, error) {
+	log.Info().Str("user_id", userID).Msg("Fetching notifications")
 
-	// Transform database models to DTOs
-	notificationResponses := make([]dto.NotificationResponse, 0, len(notifications))
-	for _, notif := range notifications {
-		status := dto.NotificationStatusRead
-		if !notif.IsRead {
-			status = dto.NotificationStatusUnread
-		}
-
-		notificationResponses = append(notificationResponses, dto.NotificationResponse{
-			ID:        string(notif.NotifiID),
-			Title:     notif.Title,
-			Details:   notif.Message,
-			Timestamp: notif.CreatedAt.UnixMilli(),
-			Status:    status,
-		})
-	}
-
-	// Calculate pagination info
-	returned := len(notificationResponses)
-	hasMore := int64(offset+returned) < totalCount
-
-	return &dto.GetNotificationsResponse{
-		Message: "Notifications retrieved successfully",
-		Data: dto.NotificationsResponseData{
-			Notifications: notificationResponses,
-			Pagination: dto.PaginationInfo{
-				Limit:    limit,
-				Offset:   offset,
-				Returned: returned,
-				HasMore:  hasMore,
-			},
+	// Mock some notifications
+	notifications := []dto.NotificationResponse{
+		{
+			ID:        "notif-001",
+			UserID:    userID,
+			Title:     "New Login Detected",
+			Message:   "Your account was accessed from a new device",
+			Type:      "auth",
+			Status:    "unread",
+			CreatedAt: time.Now().AddDate(0, 0, -1),
 		},
+		{
+			ID:        "notif-002",
+			UserID:    userID,
+			Title:     "Security Update",
+			Message:   "Consider updating your security settings",
+			Type:      "security",
+			Status:    "read",
+			CreatedAt: time.Now().AddDate(0, 0, -2),
+		},
+		{
+			ID:        "notif-003",
+			UserID:    userID,
+			Title:     "Account Activity",
+			Message:   "Your password was changed 30 days ago",
+			Type:      "account",
+			Status:    "read",
+			CreatedAt: time.Now().AddDate(0, 0, -30),
+		},
+	}
+
+	return &dto.FetchNotificationsResponse{
+		Success:       true,
+		Notifications: notifications,
+		Total:         len(notifications),
 	}, nil
 }
 
-// UpdateNotificationStatus updates the read status of a notification
-// Verifies the notification belongs to the user before updating
-func (s *notificationService) UpdateNotificationStatus(userID uint, notificationID string, status string) (*dto.UpdateNotificationStatusResponse, error) {
-	// Verify notification exists and belongs to user
-	notification, err := s.notificationRepo.GetNotificationByIDAndUserID(notificationID, userID)
-	if err != nil {
-		return nil, err
-	}
+func (s *notificationService) MarkAllRead(ctx context.Context, userID string) (*dto.MarkAllReadResponse, error) {
+	log.Info().Str("user_id", userID).Msg("Marking all notifications as read")
 
-	// Convert status string to boolean
-	isRead := status == "read"
+	// Simulate marking notifications
+	updated := 3 // mocking 3 notifications updated
 
-	// Update the notification status
-	if err := s.notificationRepo.UpdateNotificationStatus(notificationID, userID, isRead); err != nil {
-		return nil, err
-	}
-
-	// Build and return response
-	response := &dto.UpdateNotificationStatusResponse{
-		Message: "Notification status updated successfully",
-	}
-	response.Data.NotificationID = string(notification.NotifiID)
-	response.Data.Status = status
-
-	return response, nil
+	return &dto.MarkAllReadResponse{
+		Success: true,
+		Message: "all notifications marked as read",
+		Updated: updated,
+	}, nil
 }
 
-// MarkAllAsRead marks all unread notifications for a user as read
-// Fully idempotent - returns 0 if all are already read
-func (s *notificationService) MarkAllAsRead(userID uint) (*dto.MarkAllAsReadResponse, error) {
-	// Update all unread notifications for the user
-	updatedCount, err := s.notificationRepo.MarkAllNotificationsAsRead(userID)
-	if err != nil {
-		return nil, err
+func (s *notificationService) UpdateNotificationStatus(ctx context.Context, userID, notificationID string, req dto.UpdateNotificationStatusRequest) (*dto.UpdateNotificationStatusResponse, error) {
+	log.Info().Str("user_id", userID).Str("notification_id", notificationID).Str("status", req.Status).Msg("Updating notification status")
+
+	if req.Status != "read" && req.Status != "archived" {
+		return nil, fmt.Errorf("invalid status: %s", req.Status)
 	}
 
-	// Build and return response
-	response := &dto.MarkAllAsReadResponse{
-		Message: "All notifications marked as read",
+	notif := dto.NotificationResponse{
+		ID:        notificationID,
+		UserID:    userID,
+		Title:     "Sample Notification",
+		Message:   "This is a sample notification",
+		Type:      "account",
+		Status:    req.Status,
+		CreatedAt: time.Now(),
 	}
-	response.Data.UpdatedCount = updatedCount
 
-	return response, nil
+	return &dto.UpdateNotificationStatusResponse{
+		Success: true,
+		Message: fmt.Sprintf("notification marked as %s", req.Status),
+		Data:    notif,
+	}, nil
 }
