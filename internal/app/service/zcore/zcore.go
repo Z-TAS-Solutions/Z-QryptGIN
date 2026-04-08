@@ -30,7 +30,7 @@ type ZEvent struct {
 }
 
 type ZCoreService struct {
-	ZIPCClient *ipc.ZPIPCClient
+	ZIPCClient *ipc.ZIPCClient
 	ZPiClient  zscanproto.ZPiControllerClient
 	ZFusion    zfusionproto.FusionCaptureServiceClient
 	ZCoreHub   zcoreproto.ZCoreServiceClient
@@ -171,7 +171,7 @@ func (z *ZCoreService) HandleFusionMatch(zFusionResponse *zfusionproto.ZFusionRe
 
 	if z.ZIPCClient != nil {
 		matchCtx, matchCancel := context.WithTimeout(context.Background(), 5*time.Second)
-		matchResult, score, err := z.ZIPCClient.MatchTemplate(matchCtx, "zischl", zFusionResponse.FusionBitstream)
+		matchResult, score, err := z.ZIPCClient.MatchTemplate(matchCtx, zFusionResponse.FusionBitstream)
 		matchCancel()
 
 		var ledStatus zscanproto.LEDStatus
