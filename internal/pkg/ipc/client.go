@@ -12,8 +12,8 @@ import (
 )
 
 type ZIPCClient struct {
-	conn     *grpc.ClientConn
-	cryptSvc zipcproto.CrypticServiceClient
+	conn       *grpc.ClientConn
+	crypticSvc zipcproto.CrypticServiceClient
 }
 
 func RunZIPCClient() (*ZIPCClient, error) {
@@ -41,58 +41,55 @@ func RunZIPCClient() (*ZIPCClient, error) {
 		cancel()
 		log.Printf("[ZIPC] Successfully connected to Rust ZIPC via %s", target)
 
-		return &ZPIPCClient{
-			conn:     conn,
-			cryptSvc: zpipcproto.NewCrypticServiceClient(conn),
-			pingSvc:  zpipcproto.NewPingServiceClient(conn),
+		return &ZIPCClient{
+			conn:       conn,
+			crypticSvc: zipcproto.NewCrypticServiceClient(conn),
 		}, nil
 	}
 }
 
-func (c *ZPIPCClient) Close() error {
+func (c *ZIPCClient) Close() error {
 	if c.conn != nil {
 		return c.conn.Close()
 	}
 	return nil
 }
 
-func (c *ZPIPCClient) Ping(ctx context.Context, message string) (string, error) {
-	req := &zpipcproto.PingRequest{Message: message}
-	resp, err := c.pingSvc.Ping(ctx, req)
+func (c *ZIPCClient) Ping(ctx context.Context, message string) (string, error) {
+	req := &zipcproto.PingRequest{Message: message}
+	resp, err := c.crypticSvc.Ping(ctx, req)
 	if err != nil {
 		return "", fmt.Errorf("ZIPC Ping remote error: %w", err)
 	}
-	return resp.Reply, nil
+	return resp.Ping, nil
 }
 
-func (c *ZPIPCClient) MatchTemplate(ctx context.Context, userID string, liveTemplateData []byte) (bool, float32, error) {
-	req := &zpipcproto.MatchTemplateRequest{
-		UserId:           userID,
-		LiveTemplateData: liveTemplateData,
+func (c *ZIPCClient) MatchTemplate(ctx context.Context, livePayload []byte) (bool, float32, error) {
+	req := &zipcproto.MatchTemplateRequest{
+		Payload: livePayload,
 	}
-	resp, err := c.cryptSvc.MatchTemplate(ctx, req)
+	resp, err := c.crypticSvc.MatchTemplate(ctx, req)
 	if err != nil {
 		return false, 0, fmt.Errorf("ZIPC MatchTemplate remote error: %w", err)
 	}
-	if resp.ErrorMessage != "" {
-		return resp.IsMatch, resp.ConfidenceScore, fmt.Errorf("cryptic service error: %s", resp.ErrorMessage)
+	if resp.ResponseMessage != "" {
+		return resp.Matched, resp.MatchScore, fmt.Errorf("cryptic service error: %s", resp.ResponseMessage)
 	}
-	return resp.IsMatch, resp.ConfidenceScore, nil
+	return resp.Matched, resp.MatchScore, nil
 }
 
-func (c *ZPIPCClient) StoreEncryptedTemplate(ctx context.Context, userID, templateID, templateType string, rawTemplateData []byte) (bool, error) {
-	req := &zpipcproto.StoreTemplateRequest{
-		UserId:          userID,
-		TemplateId:      templateID,
-		TemplateType:    templateType,
-		RawTemplateData: rawTemplateData,
+func (c *ZIPCClient) StoreEncryptedTemplate(ctx context.Context, userID, templateID, templateType string, rawTemplateData []byte) (bool, error) {
+	req := &zipcproto.StoreTemplateRequest{
+		UserId:       userID,
+		TemplateType: templateType,
+		Payload:      rawTemplateData,
 	}
-	resp, err := c.cryptSvc.StoreEncryptedTemplate(ctx, req)
+	resp, err := c.crypticSvc.StoreEncryptedTemplate(ctx, req)
 	if err != nil {
 		return false, fmt.Errorf("ZIPC StoreEncryptedTemplate remote error: %w", err)
 	}
-	if !resp.Success || resp.ErrorMessage != "" {
-		return false, fmt.Errorf("failed to store template: %s", resp.ErrorMessage)
+	if !resp.State || resp.ResponseMessage != "" {
+		return false, fmt.Errorf("failed to store template: %s", resp.ResponseMessage)
 	}
-	return resp.Success, nil
+	return resp.State, nil
 }
