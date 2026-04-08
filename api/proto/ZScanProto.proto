@@ -1,7 +1,7 @@
 syntax = "proto3";
 
 package zscanproto;
-option go_package = "./internal/pkg/zscanproto/";
+option go_package = "github.com/Z-TAS-Solutions/Z-QryptGIN/internal/pkg/zscanproto/";
 
 message Empty {}
 
@@ -32,7 +32,7 @@ message LEDState {
 enum ToFState {
 	ToFDisabled = 0;
 	ToFEnabled = 1;
-  ToFInactive = 2; 
+  ToFInactive = 2;
 	ToFActive = 3;
 }
 
@@ -75,9 +75,9 @@ service ZPiController {
    rpc GetLED (Empty) returns (LEDState);
 
    rpc ConfigureToF (ToFConfig) returns (Status);
-   rpc EnableToF (Empty) returns (Status);    
-   rpc DisableToF (Empty) returns (Status);   
-   rpc ActivateToF (Empty) returns (Status); 
+   rpc EnableToF (Empty) returns (Status);
+   rpc DisableToF (Empty) returns (Status);
+   rpc ActivateToF (Empty) returns (Status);
    rpc DeactivateToF (Empty) returns (Status);
 
    rpc ActivateCamera (Empty) returns (Status);

@@ -1,6 +1,6 @@
 syntax = "proto3";
 package zcoreproto;
-option go_package = "./internal/pkg/zcoreproto";
+option go_package = "github.com/Z-TAS-Solutions/Z-QryptGIN/internal/pkg/zcoreproto";
 
 service ZCoreService {
   rpc Register(RegisterRequest) returns (RegisterResponse);
