@@ -6,18 +6,17 @@ import (
 	"log"
 	"time"
 
-	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/pkg/zpipcproto"
+	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/pkg/zipcproto"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-type ZPIPCClient struct {
+type ZIPCClient struct {
 	conn     *grpc.ClientConn
-	cryptSvc zpipcproto.CrypticServiceClient
-	pingSvc  zpipcproto.PingServiceClient
+	cryptSvc zipcproto.CrypticServiceClient
 }
 
-func RunZIPCClient() (*ZPIPCClient, error) {
+func RunZIPCClient() (*ZIPCClient, error) {
 	target, dialer, options := getPlatformDialConfig()
 
 	options = append(options,
