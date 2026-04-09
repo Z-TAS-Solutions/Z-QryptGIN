@@ -15,6 +15,7 @@ import (
 	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/pkg/zscanproto"
 )
 
+// this premium version includes the remote hub as a service while the basic version doesn't
 func RunZClientHandlerEx(ZCoreService *zcore.ZCoreService, nodeID, nodeAddr, hubAddr string) {
 	var wg sync.WaitGroup
 
@@ -44,10 +45,11 @@ func RunZClientHandlerEx(ZCoreService *zcore.ZCoreService, nodeID, nodeAddr, hub
 	wg.Wait()
 	log.Println("[ZClientHandler] All services connected! Starting persistent monitor...")
 
-	// Start the batched health monitor
+	// Start the batched health monitor which'll await and reconnect shit if shit goes down
 	go monitorConnections(ZCoreService, nodeID, nodeAddr, hubAddr, true)
 }
 
+// no remote hub meaning no remote admin panel/ 2FA
 func RunZClientHandler(ZCoreService *zcore.ZCoreService) {
 	var wg sync.WaitGroup
 
@@ -119,6 +121,7 @@ func connectZCoreHub(ZCoreService *zcore.ZCoreService, nodeID, nodeAddr, hubAddr
 	ZCoreService.ZCoreHub = zCoreHubClient
 }
 
+// this thing is no longer needed, switching to grpc keep alive
 func monitorConnections(ZCoreService *zcore.ZCoreService, nodeID, nodeAddr, hubAddr string, hasHub bool) {
 	ticker := time.NewTicker(10 * time.Second)
 	defer ticker.Stop()

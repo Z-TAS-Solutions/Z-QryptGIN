@@ -9,6 +9,7 @@ import (
 	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/pkg/zipcproto"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/keepalive"
 )
 
 type ZIPCClient struct {
@@ -19,10 +20,17 @@ type ZIPCClient struct {
 func RunZIPCClient() (*ZIPCClient, error) {
 	target, dialer, options := getPlatformDialConfig()
 
+	kpc := keepalive.ClientParameters{
+		Time:                30 * time.Second,
+		Timeout:             5 * time.Second,
+		PermitWithoutStream: true,
+	}
+
 	options = append(options,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithContextDialer(dialer),
 		grpc.WithBlock(),
+		grpc.WithKeepaliveParams(kpc),
 	)
 
 	log.Printf("[ZIPC] Attempting to connect to Rust ZIPC via %s...", target)
@@ -34,7 +42,7 @@ func RunZIPCClient() (*ZIPCClient, error) {
 		if err != nil {
 			log.Printf("[ZIPC] Connection failed to %s: %v. Retrying in 7 seconds...", target, err)
 			cancel()
-			time.Sleep(7 * time.Second) // Fixed to match your log message
+			time.Sleep(7 * time.Second)
 			continue
 		}
 

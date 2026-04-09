@@ -9,6 +9,7 @@ import (
 	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/pkg/zscanproto"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/keepalive"
 )
 
 func RunZPiClient(ip string) (zscanproto.ZPiControllerClient, error) {
@@ -17,9 +18,16 @@ func RunZPiClient(ip string) (zscanproto.ZPiControllerClient, error) {
 	for {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 
+		kpc := keepalive.ClientParameters{
+			Time:                30 * time.Second,
+			Timeout:             5 * time.Second,
+			PermitWithoutStream: true,
+		}
+
 		zPiConn, err := grpc.DialContext(ctx, ip,
 			grpc.WithTransportCredentials(insecure.NewCredentials()),
 			grpc.WithBlock(),
+			grpc.WithKeepaliveParams(kpc),
 		)
 
 		if err != nil {
