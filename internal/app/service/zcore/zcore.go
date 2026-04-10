@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/app/service/znode_monitor"
 	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/app/service/zpi_client"
 	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/pkg/ipc"
 	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/pkg/zcoreproto"
@@ -34,6 +35,8 @@ type ZCoreService struct {
 	ZPiClient  zscanproto.ZPiControllerClient
 	ZFusion    zfusionproto.FusionCaptureServiceClient
 	ZCoreHub   zcoreproto.ZCoreServiceClient
+
+	ServiceMonitor *znodemonitor.ZNodeMonitor
 
 	EventChannel chan ZEvent
 	sessionCount int

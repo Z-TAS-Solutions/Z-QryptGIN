@@ -12,7 +12,7 @@ import (
 	"google.golang.org/grpc/keepalive"
 )
 
-func RunZPiClient(ip string) (zscanproto.ZPiControllerClient, error) {
+func RunZPiClient(ip string) (zscanproto.ZPiControllerClient, *grpc.ClientConn, error) {
 	log.Printf("[ZPi] Attempting to connect to ZPi Controller at %s...", ip)
 
 	for {
@@ -41,7 +41,7 @@ func RunZPiClient(ip string) (zscanproto.ZPiControllerClient, error) {
 		log.Printf("[ZPi] Successfully connected to ZPi GRPC Host: %s", ip)
 
 		zPiClient := zscanproto.NewZPiControllerClient(zPiConn)
-		return zPiClient, nil
+		return zPiClient, zPiConn, nil
 	}
 }
 

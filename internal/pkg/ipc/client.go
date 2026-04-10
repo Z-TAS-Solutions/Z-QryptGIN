@@ -13,7 +13,7 @@ import (
 )
 
 type ZIPCClient struct {
-	conn       *grpc.ClientConn
+	ZIPCConn   *grpc.ClientConn
 	crypticSvc zipcproto.CrypticServiceClient
 }
 
@@ -50,15 +50,15 @@ func RunZIPCClient() (*ZIPCClient, error) {
 		log.Printf("[ZIPC] Successfully connected to Rust ZIPC via %s", target)
 
 		return &ZIPCClient{
-			conn:       conn,
+			ZIPCConn:   conn,
 			crypticSvc: zipcproto.NewCrypticServiceClient(conn),
 		}, nil
 	}
 }
 
 func (c *ZIPCClient) Close() error {
-	if c.conn != nil {
-		return c.conn.Close()
+	if c.ZIPCConn != nil {
+		return c.ZIPCConn.Close()
 	}
 	return nil
 }

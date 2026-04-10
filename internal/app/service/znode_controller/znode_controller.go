@@ -42,7 +42,7 @@ func RunZCoreNode(nodeAddr string, eventChannel chan zcore.ZEvent) {
 	}
 }
 
-func ConnectZCoreHub(nodeID, nodeAddr, hubAddr string, retry bool) (zcoreproto.ZCoreServiceClient, error) {
+func ConnectZCoreHub(nodeID, nodeAddr, hubAddr string, retry bool) (zcoreproto.ZCoreServiceClient, *grpc.ClientConn, error) {
 	kpc := keepalive.ClientParameters{
 		Time:                30 * time.Second,
 		Timeout:             5 * time.Second,
@@ -54,12 +54,12 @@ func ConnectZCoreHub(nodeID, nodeAddr, hubAddr string, retry bool) (zcoreproto.Z
 		grpc.WithKeepaliveParams(kpc),
 	}
 
-	conn, err := grpc.NewClient(hubAddr, options...)
+	zCoreHubConn, err := grpc.NewClient(hubAddr, options...)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create gRPC client: %w", err)
+		return nil, nil, fmt.Errorf("failed to create gRPC client: %w", err)
 	}
 
-	client := zcoreproto.NewZCoreServiceClient(conn)
+	client := zcoreproto.NewZCoreServiceClient(zCoreHubConn)
 
 	for {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -72,12 +72,12 @@ func ConnectZCoreHub(nodeID, nodeAddr, hubAddr string, retry bool) (zcoreproto.Z
 
 		if err == nil {
 			log.Println("[ZCoreNode] Successfully registered with ZCoreHub!")
-			return client, nil
+			return client, zCoreHubConn, nil
 		}
 
 		if !retry {
 			log.Fatalf("[ZCoreNode] Registration failed, retry disabled: %v", err)
-			return nil, err
+			return nil, nil, err
 		}
 
 		log.Printf("[ZCoreNode] Registration failed: %v. Retrying in 5s...", err)

@@ -12,7 +12,7 @@ import (
 	"google.golang.org/grpc/keepalive"
 )
 
-func RunZFusionClient(ip string) (zfusionproto.FusionCaptureServiceClient, error) {
+func RunZFusionClient(ip string) (zfusionproto.FusionCaptureServiceClient, *grpc.ClientConn, error) {
 	var target string
 
 	if ip != "" {
@@ -53,6 +53,6 @@ func RunZFusionClient(ip string) (zfusionproto.FusionCaptureServiceClient, error
 		log.Printf("[FusionClient] Successfully connected to ZCrypt-FusionEngine at %s", target)
 
 		zFusionClient := zfusionproto.NewFusionCaptureServiceClient(zFusionConn)
-		return zFusionClient, nil
+		return zFusionClient, zFusionConn, nil
 	}
 }

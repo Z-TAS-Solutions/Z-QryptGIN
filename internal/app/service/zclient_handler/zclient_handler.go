@@ -4,15 +4,13 @@ import (
 	"context"
 	"log"
 	"sync"
-	"time"
 
 	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/app/service/zcore"
 	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/app/service/zfusion_client"
 	znodecontroller "github.com/Z-TAS-Solutions/Z-QryptGIN/internal/app/service/znode_controller"
+	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/app/service/znode_monitor"
 	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/app/service/zpi_client"
 	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/pkg/ipc"
-	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/pkg/zcoreproto"
-	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/pkg/zscanproto"
 )
 
 // this premium version includes the remote hub as a service while the basic version doesn't
@@ -45,8 +43,12 @@ func RunZClientHandlerEx(ZCoreService *zcore.ZCoreService, nodeID, nodeAddr, hub
 	wg.Wait()
 	log.Println("[ZClientHandler] All services connected! Starting persistent monitor...")
 
-	// Start the batched health monitor which'll await and reconnect shit if shit goes down
-	go monitorConnections(ZCoreService, nodeID, nodeAddr, hubAddr, true)
+	// setting up context for service monitor
+	ctx, EndMonitor := context.WithCancel(context.Background())
+
+	ZCoreService.ServiceMonitor.MonitorContext = ctx
+	ZCoreService.ServiceMonitor.EndMonitor = EndMonitor
+
 }
 
 // no remote hub meaning no remote admin panel/ 2FA
@@ -74,12 +76,17 @@ func RunZClientHandler(ZCoreService *zcore.ZCoreService) {
 	wg.Wait()
 	log.Println("[ZClientHandler] Core services connected! Starting persistent monitor...")
 
-	go monitorConnections(ZCoreService, "", "", "", false)
+	// setting up context for service monitor
+	ctx, EndMonitor := context.WithCancel(context.Background())
+
+	ZCoreService.ServiceMonitor.MonitorContext = ctx
+	ZCoreService.ServiceMonitor.EndMonitor = EndMonitor
+
 }
 
 func connectZPi(ZCoreService *zcore.ZCoreService) {
 	log.Println("[ZClientHandler] Dialing ZPiScanner...")
-	zpiClient, err := zpi_client.RunZPiClient("192.168.1.229:50051")
+	zpiClient, zpiConn, err := zpi_client.RunZPiClient("192.168.1.229:50051")
 	if err != nil {
 		log.Printf("[ZClientHandler] Initial ZPi connection failed: %v", err)
 		return
@@ -89,16 +96,24 @@ func connectZPi(ZCoreService *zcore.ZCoreService) {
 		log.Println("[ZClientHandler] Initial ZPi configuration failed.")
 	}
 	ZCoreService.ZPiClient = zpiClient
+
+	// Starting the ZNode monitor
+	znodemonitor.RunNodeMonitor(ZCoreService.ServiceMonitor.MonitorContext, "[ZPi]", zpiConn)
+
 }
 
 func connectZFusion(ZCoreService *zcore.ZCoreService) {
 	log.Println("[ZClientHandler] Dialing ZFusionCore...")
-	zfusionClient, err := zfusion_client.RunZFusionClient("")
+	zfusionClient, zfusionConn, err := zfusion_client.RunZFusionClient("")
 	if err != nil {
 		log.Printf("[ZClientHandler] Initial ZFusion connection failed: %v", err)
 		return
 	}
 	ZCoreService.ZFusion = zfusionClient
+
+	// Starting the ZNode monitor
+	znodemonitor.RunNodeMonitor(ZCoreService.ServiceMonitor.MonitorContext, "[ZFusion]", zfusionConn)
+
 }
 
 func connectZIPC(ZCoreService *zcore.ZCoreService) {
@@ -109,64 +124,22 @@ func connectZIPC(ZCoreService *zcore.ZCoreService) {
 		return
 	}
 	ZCoreService.ZIPCClient = zIPCClient
+
+	// Starting the ZNode monitor
+	znodemonitor.RunNodeMonitor(ZCoreService.ServiceMonitor.MonitorContext, "[ZIPC]", zIPCClient.ZIPCConn)
+
 }
 
 func connectZCoreHub(ZCoreService *zcore.ZCoreService, nodeID, nodeAddr, hubAddr string) {
 	log.Println("[ZClientHandler] Dialing Remote ZCoreHub...")
-	zCoreHubClient, err := znodecontroller.ConnectZCoreHub(nodeID, nodeAddr, hubAddr, true)
+	zCoreHubClient, zCoreHubConn, err := znodecontroller.ConnectZCoreHub(nodeID, nodeAddr, hubAddr, true)
 	if err != nil {
 		log.Printf("[ZClientHandler] Initial ZCoreHub connection/registration failed: %v", err)
 		return
 	}
 	ZCoreService.ZCoreHub = zCoreHubClient
-}
 
-// this thing is no longer needed, switching to grpc keep alive
-func monitorConnections(ZCoreService *zcore.ZCoreService, nodeID, nodeAddr, hubAddr string, hasHub bool) {
-	ticker := time.NewTicker(10 * time.Second)
-	defer ticker.Stop()
+	// Starting the ZNode monitor
+	znodemonitor.RunNodeMonitor(ZCoreService.ServiceMonitor.MonitorContext, "[ZIPC]", zCoreHubConn)
 
-	for range ticker.C {
-		if ZCoreService.ZPiClient == nil {
-			connectZPi(ZCoreService)
-		} else {
-			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-			_, err := ZCoreService.ZPiClient.ConfigureToF(ctx, &zscanproto.ToFConfig{Threshold: 320})
-			cancel()
-			if err != nil {
-				log.Printf("[ConnectionMonitor] ZPiScanner appears offline: %v. Reconnecting...", err)
-				connectZPi(ZCoreService)
-			}
-		}
-
-		if ZCoreService.ZIPCClient == nil {
-			connectZIPC(ZCoreService)
-		} else {
-			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-			_, err := ZCoreService.ZIPCClient.Ping(ctx, "keep-alive")
-			cancel()
-			if err != nil {
-				log.Printf("[ConnectionMonitor] ZIPC Core appears offline: %v. Reconnecting...", err)
-				connectZIPC(ZCoreService)
-			}
-		}
-
-		if hasHub {
-			if ZCoreService.ZCoreHub == nil {
-				connectZCoreHub(ZCoreService, nodeID, nodeAddr, hubAddr)
-			} else {
-				ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-				_, err := ZCoreService.ZCoreHub.Ping(ctx, &zcoreproto.PingRequest{Message: "keep-alive"})
-				cancel()
-				if err != nil {
-					log.Printf("[ConnectionMonitor] ZCoreHub appears offline: %v. Reconnecting and Re-registering...", err)
-					connectZCoreHub(ZCoreService, nodeID, nodeAddr, hubAddr)
-				}
-			}
-		}
-
-		if ZCoreService.ZFusion == nil {
-			connectZFusion(ZCoreService)
-		}
-	}
 }
