@@ -15,6 +15,11 @@ import (
 
 // this premium version includes the remote hub as a service while the basic version doesn't
 func RunZClientHandlerEx(ZCoreService *zcore.ZCoreService, nodeID, nodeAddr, hubAddr string) {
+	// setting up context for service monitor
+	ctx, EndMonitor := context.WithCancel(context.Background())
+
+	ZCoreService.ServiceMonitor = &znodemonitor.ZNodeMonitor{MonitorContext: ctx, EndMonitor: EndMonitor}
+
 	var wg sync.WaitGroup
 
 	wg.Add(4)
@@ -43,16 +48,15 @@ func RunZClientHandlerEx(ZCoreService *zcore.ZCoreService, nodeID, nodeAddr, hub
 	wg.Wait()
 	log.Println("[ZClientHandler] All services connected! Starting persistent monitor...")
 
-	// setting up context for service monitor
-	ctx, EndMonitor := context.WithCancel(context.Background())
-
-	ZCoreService.ServiceMonitor.MonitorContext = ctx
-	ZCoreService.ServiceMonitor.EndMonitor = EndMonitor
-
 }
 
 // no remote hub meaning no remote admin panel/ 2FA
 func RunZClientHandler(ZCoreService *zcore.ZCoreService) {
+	// setting up context for service monitor
+	ctx, EndMonitor := context.WithCancel(context.Background())
+
+	ZCoreService.ServiceMonitor = &znodemonitor.ZNodeMonitor{MonitorContext: ctx, EndMonitor: EndMonitor}
+
 	var wg sync.WaitGroup
 
 	wg.Add(3)
@@ -75,12 +79,6 @@ func RunZClientHandler(ZCoreService *zcore.ZCoreService) {
 	log.Println("[ZClientHandler] Awaiting initial connection of core services...")
 	wg.Wait()
 	log.Println("[ZClientHandler] Core services connected! Starting persistent monitor...")
-
-	// setting up context for service monitor
-	ctx, EndMonitor := context.WithCancel(context.Background())
-
-	ZCoreService.ServiceMonitor.MonitorContext = ctx
-	ZCoreService.ServiceMonitor.EndMonitor = EndMonitor
 
 }
 
@@ -125,9 +123,10 @@ func connectZIPC(ZCoreService *zcore.ZCoreService) {
 	}
 	ZCoreService.ZIPCClient = zIPCClient
 
+	log.Println("hrhdh")
+
 	// Starting the ZNode monitor
 	znodemonitor.RunNodeMonitor(ZCoreService.ServiceMonitor.MonitorContext, "[ZIPC]", zIPCClient.ZIPCConn)
-
 }
 
 func connectZCoreHub(ZCoreService *zcore.ZCoreService, nodeID, nodeAddr, hubAddr string) {
@@ -137,9 +136,10 @@ func connectZCoreHub(ZCoreService *zcore.ZCoreService, nodeID, nodeAddr, hubAddr
 		log.Printf("[ZClientHandler] Initial ZCoreHub connection/registration failed: %v", err)
 		return
 	}
+
 	ZCoreService.ZCoreHub = zCoreHubClient
 
 	// Starting the ZNode monitor
-	znodemonitor.RunNodeMonitor(ZCoreService.ServiceMonitor.MonitorContext, "[ZIPC]", zCoreHubConn)
+	znodemonitor.RunNodeMonitor(ZCoreService.ServiceMonitor.MonitorContext, "[ZCoreHub]", zCoreHubConn)
 
 }

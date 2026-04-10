@@ -55,7 +55,7 @@ func ConnectZCoreHub(nodeID, nodeAddr, hubAddr string, retry bool) (zcoreproto.Z
 	}
 
 	zCoreHubConn, err := grpc.NewClient(hubAddr, options...)
-	if err != nil {
+	if err != nil || zCoreHubConn == nil {
 		return nil, nil, fmt.Errorf("failed to create gRPC client: %w", err)
 	}
 
@@ -80,6 +80,7 @@ func ConnectZCoreHub(nodeID, nodeAddr, hubAddr string, retry bool) (zcoreproto.Z
 			return nil, nil, err
 		}
 
+		log.Println("bleh")
 		log.Printf("[ZCoreNode] Registration failed: %v. Retrying in 5s...", err)
 		time.Sleep(5 * time.Second)
 	}

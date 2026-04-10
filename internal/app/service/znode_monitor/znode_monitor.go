@@ -16,6 +16,9 @@ type ZNodeMonitor struct {
 // this right here's gonna be the new state watcher for mainly logging along side grpc keep alives
 func RunNodeMonitor(ctx context.Context, serviceName string, conn *grpc.ClientConn) {
 	go func() {
+
+		log.Printf("Booting up service monitor for [%s]", serviceName)
+
 		state := conn.GetState()
 		for {
 			if conn.WaitForStateChange(ctx, state) {
