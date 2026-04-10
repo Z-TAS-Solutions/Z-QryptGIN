@@ -42,7 +42,7 @@ func RunZCoreNode(nodeAddr string, eventChannel chan zcore.ZEvent) {
 	}
 }
 
-func ConnectZCoreHub(nodeID, nodeAddr, hubAddr string, retry bool) (zcoreproto.ZCoreServiceClient, *grpc.ClientConn, error) {
+func ConnectZCoreHub(nodeID, nodeAddr, nodePubIP, hubAddr string, retry bool) (zcoreproto.ZCoreServiceClient, *grpc.ClientConn, error) {
 	kpc := keepalive.ClientParameters{
 		Time:                30 * time.Second,
 		Timeout:             5 * time.Second,
@@ -66,7 +66,7 @@ func ConnectZCoreHub(nodeID, nodeAddr, hubAddr string, retry bool) (zcoreproto.Z
 
 		_, err := client.Register(ctx, &zcoreproto.RegisterRequest{
 			NodeId:   nodeID,
-			NodeAddr: nodeAddr,
+			NodeAddr: nodePubIP + ":50052",
 		})
 		cancel()
 

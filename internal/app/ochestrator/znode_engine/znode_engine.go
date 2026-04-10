@@ -15,7 +15,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-func RunZCoreWHub(nodeID, nodeAddr, hubAddr string) {
+func RunZCoreWHub(nodeID, nodeAddr, nodePubIP, hubAddr string) {
 
 	eventQueue := make(chan zcore.ZEvent, 200)
 
@@ -23,7 +23,7 @@ func RunZCoreWHub(nodeID, nodeAddr, hubAddr string) {
 
 	ZCoreService := &zcore.ZCoreService{}
 
-	zclient_handler.RunZClientHandlerEx(ZCoreService, nodeID, nodeAddr, hubAddr)
+	zclient_handler.RunZClientHandlerEx(ZCoreService, nodeID, nodeAddr, nodePubIP, hubAddr)
 
 	go ZCoreService.ZCoreEngine(eventQueue)
 

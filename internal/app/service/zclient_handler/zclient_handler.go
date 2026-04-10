@@ -14,7 +14,7 @@ import (
 )
 
 // this premium version includes the remote hub as a service while the basic version doesn't
-func RunZClientHandlerEx(ZCoreService *zcore.ZCoreService, nodeID, nodeAddr, hubAddr string) {
+func RunZClientHandlerEx(ZCoreService *zcore.ZCoreService, nodeID, nodeAddr, nodePubIP, hubAddr string) {
 	// setting up context for service monitor
 	ctx, EndMonitor := context.WithCancel(context.Background())
 
@@ -41,7 +41,7 @@ func RunZClientHandlerEx(ZCoreService *zcore.ZCoreService, nodeID, nodeAddr, hub
 
 	go func() {
 		defer wg.Done()
-		connectZCoreHub(ZCoreService, nodeID, nodeAddr, hubAddr)
+		connectZCoreHub(ZCoreService, nodeID, nodeAddr, nodePubIP, hubAddr)
 	}()
 
 	log.Println("[ZClientHandler] Awaiting initial connection of all services...")
@@ -129,9 +129,9 @@ func connectZIPC(ZCoreService *zcore.ZCoreService) {
 	znodemonitor.RunNodeMonitor(ZCoreService.ServiceMonitor.MonitorContext, "[ZIPC]", zIPCClient.ZIPCConn)
 }
 
-func connectZCoreHub(ZCoreService *zcore.ZCoreService, nodeID, nodeAddr, hubAddr string) {
+func connectZCoreHub(ZCoreService *zcore.ZCoreService, nodeID, nodeAddr, nodePubIP, hubAddr string) {
 	log.Println("[ZClientHandler] Dialing Remote ZCoreHub...")
-	zCoreHubClient, zCoreHubConn, err := znodecontroller.ConnectZCoreHub(nodeID, nodeAddr, hubAddr, true)
+	zCoreHubClient, zCoreHubConn, err := znodecontroller.ConnectZCoreHub(nodeID, nodeAddr, nodePubIP, hubAddr, true)
 	if err != nil {
 		log.Printf("[ZClientHandler] Initial ZCoreHub connection/registration failed: %v", err)
 		return
