@@ -20,6 +20,7 @@ type User struct {
 	Status        UserStatus        `gorm:"default:Active"`
 	SecurityLevel UserSecurityLevel `gorm:"default:Low"`
 	MFAStatus     bool
+	LastLogin     *time.Time `gorm:"index"` // Useful for dashboard sorting/filtering
 	//Relationships
 	Notifications  []Notification       `gorm:"foreignKey:UserID"`
 	MfaChallenges  []MfaChallenge       `gorm:"foreignKey:UserID"`

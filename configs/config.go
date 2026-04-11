@@ -80,7 +80,7 @@ func (conf *Config) CorsNew() gin.HandlerFunc {
 	allowedOrigin := GetEnvOrPanic(constants.EnvKeys.CorsAllowedOrigin)
 
 	return cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:5173"},
+		AllowOrigins:     []string{"http://localhost:5173", "http://z-tas.com", "https://z-tas.com"},
 		AllowMethods:     []string{http.MethodGet, http.MethodPost, http.MethodOptions},
 		AllowHeaders:     []string{constants.Headers.Origin, "Content-Type", "Accept", "Authorization", "X-Session-Token"},
 		ExposeHeaders:    []string{constants.Headers.ContentLength},

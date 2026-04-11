@@ -370,6 +370,7 @@ func (s *userRegistrationService) FinishRegistration(ctx context.Context, userID
 	}
 
 	// 8.5) Trigger Enrollment Request to Z-Nodes via Hub. also i'm stealing 8.5
+	fmt.Println("###################Triggering node enrollment via gRPC Hub...########################")
 	if s.znodeClient != nil {
 		go func() {
 			enrollCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)

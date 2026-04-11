@@ -1,0 +1,46 @@
+name: Deploy Z-QryptGIN API
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment: CI/CD
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+
+      - name: Build Binary for Linux
+        env: 
+          GOTOOLCHAIN: local
+        run: |
+          # CGO_ENABLED=0 creates a static binary that works on any Linux distro
+          # -ldflags="-s -w" reduces the binary size significantly
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o zqrypt-api cmd/api/main.go
+
+      - name: Upload Binary to Server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          source: "zqrypt-api"
+          target: "/home/Z-TAS/Z-QcryptGIN/"
+
+      - name: Restart Service via SSH
+        uses: appleboy/ssh-action@v0.1.9
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          script: |
+            # Ensure permissions are correct and restart
+            sudo systemctl restart api

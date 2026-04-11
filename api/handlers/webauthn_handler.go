@@ -297,6 +297,9 @@ func (h *WebAuthnHandler) RegisterFinish(c *gin.Context) {
 		ExpiresAt:    time.Now().Add(30 * 24 * time.Hour), // 30 days expiry
 	}
 
+	// 7.5 Update user last login
+	_ = h.userRepo.UpdateLastLogin(registeredUser.ID, time.Now())
+
 	// 8. Generate JWT token with session
 	// This will also store the session in Redis via the JWT service
 	userRole := string(registeredUser.Role)
@@ -563,6 +566,9 @@ func (h *WebAuthnHandler) LoginFinish(c *gin.Context) {
 		LastActiveAt: time.Now(),
 		ExpiresAt:    time.Now().Add(30 * 24 * time.Hour),
 	}
+
+	// 8.5 Update user last login
+	_ = h.userRepo.UpdateLastLogin(authenticatedUser.ID, time.Now())
 
 	// 9. Generate JWT token with session
 	userRole := string(authenticatedUser.Role)

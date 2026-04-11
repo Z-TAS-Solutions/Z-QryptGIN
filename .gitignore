@@ -26,6 +26,8 @@ bin/app
 bin\app
 bin/app.exe
 bin\app.exe
+main.exe
+api/main.exe
 
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out

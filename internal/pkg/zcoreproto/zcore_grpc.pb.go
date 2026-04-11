@@ -11,6 +11,7 @@ import (
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
+	fmt "fmt"
 )
 
 // This is a compile-time assertion to ensure that this generated file
@@ -216,6 +217,7 @@ func NewZNodeControllerClient(cc grpc.ClientConnInterface) ZNodeControllerClient
 }
 
 func (c *zNodeControllerClient) StartEnrollment(ctx context.Context, in *EnrollmentRequest, opts ...grpc.CallOption) (*EnrollmentResponse, error) {
+	fmt.Println("#################### We are in the gRPC client stub for StartEnrollment! ########################")
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(EnrollmentResponse)
 	err := c.cc.Invoke(ctx, ZNodeController_StartEnrollment_FullMethodName, in, out, cOpts...)
