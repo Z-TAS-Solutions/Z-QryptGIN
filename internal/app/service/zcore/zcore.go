@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/app/service/znode_monitor"
 	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/app/service/zpi_client"
 	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/pkg/ipc"
 	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/pkg/zcoreproto"
@@ -30,10 +31,12 @@ type ZEvent struct {
 }
 
 type ZCoreService struct {
-	ZIPCClient *ipc.ZPIPCClient
+	ZIPCClient *ipc.ZIPCClient
 	ZPiClient  zscanproto.ZPiControllerClient
 	ZFusion    zfusionproto.FusionCaptureServiceClient
 	ZCoreHub   zcoreproto.ZCoreServiceClient
+
+	ServiceMonitor *znodemonitor.ZNodeMonitor
 
 	EventChannel chan ZEvent
 	sessionCount int
@@ -171,7 +174,7 @@ func (z *ZCoreService) HandleFusionMatch(zFusionResponse *zfusionproto.ZFusionRe
 
 	if z.ZIPCClient != nil {
 		matchCtx, matchCancel := context.WithTimeout(context.Background(), 5*time.Second)
-		matchResult, score, err := z.ZIPCClient.MatchTemplate(matchCtx, "zischl", zFusionResponse.FusionBitstream)
+		matchResult, score, err := z.ZIPCClient.MatchTemplate(matchCtx, zFusionResponse.FusionBitstream)
 		matchCancel()
 
 		var ledStatus zscanproto.LEDStatus

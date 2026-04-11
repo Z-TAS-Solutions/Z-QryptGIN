@@ -2,6 +2,7 @@ package znode_controller
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net"
 	"time"
@@ -11,6 +12,8 @@ import (
 	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/pkg/zcoreproto"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+
+	"google.golang.org/grpc/keepalive"
 )
 
 func RunZCoreNode(nodeAddr string, eventChannel chan zcore.ZEvent) {
@@ -39,30 +42,49 @@ func RunZCoreNode(nodeAddr string, eventChannel chan zcore.ZEvent) {
 	}
 }
 
-func ConnectZCoreHub(nodeID, nodeAddr, hubAddr string, retry bool) (zcoreproto.ZCoreServiceClient, error) {
+func ConnectZCoreHub(nodeID, nodeAddr, nodePubIP, hubAddr string, retry bool) (zcoreproto.ZCoreServiceClient, *grpc.ClientConn, error) {
+	kpc := keepalive.ClientParameters{
+		Time:                30 * time.Second,
+		Timeout:             5 * time.Second,
+		PermitWithoutStream: true,
+	}
+
+	options := []grpc.DialOption{
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithKeepaliveParams(kpc),
+	}
+
+	zCoreHubConn, err := grpc.NewClient(hubAddr, options...)
+	if err != nil || zCoreHubConn == nil {
+		return nil, nil, fmt.Errorf("failed to create gRPC client: %w", err)
+	}
+
+	client := zcoreproto.NewZCoreServiceClient(zCoreHubConn)
+
 	for {
-		zCoreHubConn, err := grpc.NewClient(hubAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+		ctx, cancel := context.WithTimeout(context.Background(), 35*time.Second)
+
+		_, err := client.Register(ctx, &zcoreproto.RegisterRequest{
+			NodeId:   nodeID,
+			NodeAddr: nodePubIP + ":50052",
+		})
+
+		_, err = client.Ping(ctx, &zcoreproto.PingRequest{
+			Message: "bleh",
+		})
+		cancel()
 
 		if err == nil {
-			remoteNode := zcoreproto.NewZCoreServiceClient(zCoreHubConn)
-
-			_, err = remoteNode.Register(context.Background(), &zcoreproto.RegisterRequest{
-				NodeId:   nodeID,
-				NodeAddr: nodeAddr,
-			})
-
-			if err == nil {
-				log.Println("[ZCoreNode] Successfully registered with ZCoreHub!")
-				return remoteNode, nil
-			}
+			log.Println("[ZCoreNode] Successfully registered with ZCoreHub!")
+			return client, zCoreHubConn, nil
 		}
 
 		if !retry {
-			log.Fatalf("[ZCoreNode] Failed to connect to ZCoreHub and retry is disabled: %v", err)
-			return nil, err
+			log.Fatalf("[ZCoreNode] Registration failed, retry disabled: %v", err)
+			return nil, nil, err
 		}
 
-		log.Printf("[ZCoreNode] ZCoreHub unreachable. Retrying in 5s...")
+		log.Printf("[ZCoreNode] Registration failed: %v. Retrying in 5s...", err)
 		time.Sleep(5 * time.Second)
 	}
 }

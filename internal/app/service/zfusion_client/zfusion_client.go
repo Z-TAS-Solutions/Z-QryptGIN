@@ -6,13 +6,13 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/pkg/zfusionproto"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
-
-	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/pkg/zfusionproto"
+	"google.golang.org/grpc/keepalive"
 )
 
-func RunZFusionClient(ip string) (zfusionproto.FusionCaptureServiceClient, error) {
+func RunZFusionClient(ip string) (zfusionproto.FusionCaptureServiceClient, *grpc.ClientConn, error) {
 	var target string
 
 	if ip != "" {
@@ -25,6 +25,12 @@ func RunZFusionClient(ip string) (zfusionproto.FusionCaptureServiceClient, error
 		}
 	}
 
+	kpc := keepalive.ClientParameters{
+		Time:                30 * time.Second,
+		Timeout:             5 * time.Second,
+		PermitWithoutStream: true,
+	}
+
 	log.Printf("[ZTAS] Attempting to connect to ZFusionCore via %s (%s detected)...", target, runtime.GOOS)
 
 	for {
@@ -33,6 +39,7 @@ func RunZFusionClient(ip string) (zfusionproto.FusionCaptureServiceClient, error
 		zFusionConn, err := grpc.DialContext(ctx, target,
 			grpc.WithTransportCredentials(insecure.NewCredentials()),
 			grpc.WithBlock(),
+			grpc.WithKeepaliveParams(kpc),
 		)
 
 		if err != nil {
@@ -46,6 +53,6 @@ func RunZFusionClient(ip string) (zfusionproto.FusionCaptureServiceClient, error
 		log.Printf("[FusionClient] Successfully connected to ZCrypt-FusionEngine at %s", target)
 
 		zFusionClient := zfusionproto.NewFusionCaptureServiceClient(zFusionConn)
-		return zFusionClient, nil
+		return zFusionClient, zFusionConn, nil
 	}
 }

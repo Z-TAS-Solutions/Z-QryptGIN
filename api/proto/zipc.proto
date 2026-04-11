@@ -1,0 +1,54 @@
+syntax = "proto3";
+package zipcproto;
+option go_package = "github.com/Z-TAS-Solutions/Z-QryptGIN/internal/pkg/zipcproto/";
+
+
+message PingRequest {
+  string message = 1;
+}
+
+message PingResponse {
+  string ping = 1;
+}
+
+
+message MatchTemplateRequest {
+  bytes payload = 1;
+}
+
+message MatchTemplateResponse {
+  bool matched = 1;
+  float match_score = 2;
+  string payload = 3;
+  string response_message = 4;
+
+}
+
+message FetchTemplateRequest {
+  string user_id = 1;
+}
+
+message FetchTemplateResponse {
+  bool state = 1;
+  bytes payload = 2;
+  string response_message = 3;
+}
+
+message StoreTemplateRequest {
+  string user_id = 1;
+  string template_type = 2;
+  bytes payload = 3;
+}
+
+message StoreTemplateResponse {
+  bool state = 1;
+  string response_message = 2;
+}
+
+service CrypticService {
+  rpc Ping(PingRequest) returns (PingResponse);
+  rpc FetchDecryptedTemplate(FetchTemplateRequest) returns (FetchTemplateResponse);
+  rpc StoreEncryptedTemplate(StoreTemplateRequest) returns (StoreTemplateResponse);
+  rpc MatchTemplate(MatchTemplateRequest) returns (MatchTemplateResponse);
+}
+

@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package zfusion;
 
-option go_package = "./internal/pkg/zfusionproto/";
+option go_package = "github.com/Z-TAS-Solutions/Z-QryptGIN/internal/pkg/zfusionproto/";
 
 message ZFusionRequest {
     string session_id = 1;

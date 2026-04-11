@@ -53,3 +53,4 @@ configs\dev.env
 #Documentation files
 docs/*.md
 docs\*.md
+*.pem

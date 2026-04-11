@@ -9,17 +9,25 @@ import (
 	"github.com/Z-TAS-Solutions/Z-QryptGIN/internal/pkg/zscanproto"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/keepalive"
 )
 
-func RunZPiClient(ip string) (zscanproto.ZPiControllerClient, error) {
+func RunZPiClient(ip string) (zscanproto.ZPiControllerClient, *grpc.ClientConn, error) {
 	log.Printf("[ZPi] Attempting to connect to ZPi Controller at %s...", ip)
 
 	for {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 
+		kpc := keepalive.ClientParameters{
+			Time:                30 * time.Second,
+			Timeout:             5 * time.Second,
+			PermitWithoutStream: true,
+		}
+
 		zPiConn, err := grpc.DialContext(ctx, ip,
 			grpc.WithTransportCredentials(insecure.NewCredentials()),
 			grpc.WithBlock(),
+			grpc.WithKeepaliveParams(kpc),
 		)
 
 		if err != nil {
@@ -33,7 +41,7 @@ func RunZPiClient(ip string) (zscanproto.ZPiControllerClient, error) {
 		log.Printf("[ZPi] Successfully connected to ZPi GRPC Host: %s", ip)
 
 		zPiClient := zscanproto.NewZPiControllerClient(zPiConn)
-		return zPiClient, nil
+		return zPiClient, zPiConn, nil
 	}
 }
 
