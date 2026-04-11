@@ -62,11 +62,15 @@ func ConnectZCoreHub(nodeID, nodeAddr, nodePubIP, hubAddr string, retry bool) (z
 	client := zcoreproto.NewZCoreServiceClient(zCoreHubConn)
 
 	for {
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), 35*time.Second)
 
 		_, err := client.Register(ctx, &zcoreproto.RegisterRequest{
 			NodeId:   nodeID,
 			NodeAddr: nodePubIP + ":50052",
+		})
+
+		_, err = client.Ping(ctx, &zcoreproto.PingRequest{
+			Message: "bleh",
 		})
 		cancel()
 
@@ -80,7 +84,6 @@ func ConnectZCoreHub(nodeID, nodeAddr, nodePubIP, hubAddr string, retry bool) (z
 			return nil, nil, err
 		}
 
-		log.Println("bleh")
 		log.Printf("[ZCoreNode] Registration failed: %v. Retrying in 5s...", err)
 		time.Sleep(5 * time.Second)
 	}
